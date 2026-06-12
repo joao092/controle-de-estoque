@@ -8,8 +8,8 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Servir arquivos estáticos do Frontend
-app.use(express.static(path.join(__dirname, "/")));
+// CORREÇÃO: Garante o mapeamento absoluto e correto do diretório atual para arquivos estáticos
+app.use(express.static(path.resolve(__dirname)));
 
 // Inicialização do Pool PostgreSQL configurado para o Render
 const pool = new Pool({
@@ -45,12 +45,11 @@ app.post("/api/produtos", async (req, res) => {
 	}
 });
 
-// Endpoint: Registrar movimentações (Entradas e Saídas) com regras de negócio aplicadas
+// Endpoint: Registrar movimentações (Entradas e Saídas)
 app.post("/api/movimentacoes", async (req, res) => {
 	const { id_produto, tipo, quantidade } = req.body;
 
 	try {
-		// Busca o status atual do produto para validação
 		const prodRes = await pool.query("SELECT quantidade, nome FROM produtos WHERE id_produto = $1", [id_produto]);
 		if (prodRes.rows.length === 0) {
 			return res.status(404).json({ erro: "Produto não encontrado." });
@@ -62,7 +61,6 @@ app.post("/api/movimentacoes", async (req, res) => {
 		if (tipo === "ENTRADA") {
 			novaQuantidade += parseInt(quantidade);
 		} else if (tipo === "SAIDA") {
-			// Regra de Negócio: Bloqueia vendas sem disponibilidade em estoque
 			if (novaQuantidade < parseInt(quantidade)) {
 				return res.status(400).json({ 
 					erro: `Quantidade insuficiente! O produto '${produtoAtual.nome}' possui apenas ${novaQuantidade} unidades em estoque.` 
@@ -73,10 +71,8 @@ app.post("/api/movimentacoes", async (req, res) => {
 			return res.status(400).json({ erro: "Tipo de operação inválido." });
 		}
 
-		// Atualiza o estoque de forma atômica
 		await pool.query("UPDATE produtos SET quantidade = $1 WHERE id_produto = $2", [novaQuantidade, id_produto]);
 
-		// Registra o log histórico da movimentação
 		await pool.query(
 			"INSERT INTO movimentacoes (id_produto, tipo, quantidade, data_operacao) VALUES ($1, $2, $3, NOW())",
 			[id_produto, tipo, quantidade]
@@ -89,12 +85,12 @@ app.post("/api/movimentacoes", async (req, res) => {
 	}
 });
 
-// Rota fallback para servir o index.html em qualquer outra requisição
+// CORREÇÃO: Utiliza path.resolve para evitar falhas de concatenação de strings no ambiente Linux do Render
 app.get("*", (req, res) => {
-	res.sendFile(path.join(__dirname, "index.html"));
+	res.sendFile(path.resolve(__dirname, "index.html"));
 });
 
-// Configuração dinâmica da porta para o Render (NÃO fixar a porta 3000)
+// Configuração dinâmica da porta para o Render
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
 	console.log(`Servidor de controle de estoque rodando na porta ${PORT}`);
