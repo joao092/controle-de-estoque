@@ -2,14 +2,43 @@ const express = require("express");
 const { Pool } = require("pg");
 const path = require("path");
 const cors = require("cors");
+const fs = require("fs");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 1. Configura o Express para servir os arquivos estáticos (CSS, JS do front) da raiz do projeto
-app.use(express.static(path.join(__dirname)));
+// =========================================================================
+// SCRIPT DE LOCALIZAÇÃO DINÂMICA DO INDEX.HTML (Resolução do erro ENOENT)
+// =========================================================================
+function encontrarCaminhoDoIndex() {
+    // Lista de caminhos prováveis onde o Render pode ter jogado seu arquivo
+    const caminhosPossiveis = [
+        path.join(__dirname, "index.html"),
+        path.join(process.cwd(), "index.html"),
+        path.join(__dirname, "..", "index.html"),
+        path.join(process.cwd(), "src", "index.html"),
+        "/opt/render/project/src/index.html"
+    ];
+
+    for (const caminho of caminhosPossiveis) {
+        if (fs.existsSync(caminho)) {
+            console.log(`[Sucesso] index.html encontrado em: ${caminho}`);
+            return caminho;
+        }
+    }
+    
+    // Se não achar em nenhum lugar, retorna o __dirname padrão para não quebrar a compilação
+    return path.join(__dirname, "index.html");
+}
+
+const caminhoIndexFinal = encontrarCaminhoDoIndex();
+const pastaEstaticaFinal = path.dirname(caminhoIndexFinal);
+
+// Configura os arquivos estáticos (CSS, JS) baseados na pasta real onde o HTML está
+app.use(express.static(pastaEstaticaFinal));
+// =========================================================================
 
 // Inicialização do Pool PostgreSQL configurado para o Render
 const pool = new Pool({
@@ -85,17 +114,16 @@ app.post("/api/movimentacoes", async (req, res) => {
 	}
 });
 
-// 2. CORREÇÃO CRÍTICA: Rota explícita para a página principal index.html usando caminho relativo seguro
+// Rotas principais servindo o arquivo detectado dinamicamente
 app.get("/", (req, res) => {
-	res.sendFile("index.html", { root: __dirname });
+	res.sendFile(caminhoIndexFinal);
 });
 
-// Rota fallback para qualquer outra rota digitada (Garante o comportamento Single Page Application)
 app.get("*", (req, res) => {
-	res.sendFile("index.html", { root: __dirname });
+	res.sendFile(caminhoIndexFinal);
 });
 
-// Configuração dinâmica da porta para o Render
+// Configura a porta dinâmica exigida pelo Render
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
 	console.log(`Servidor de controle de estoque rodando na porta ${PORT}`);
