@@ -10,40 +10,60 @@ app.use(cors());
 app.use(express.json());
 
 // =========================================================================
-// SCRIPT DE LOCALIZAÇÃO DINÂMICA DO INDEX.HTML (Resolução do erro ENOENT)
+// SISTEMA DE VARREDURA RECURSIVA PARA ENCONTRAR O INDEX.HTML
 // =========================================================================
-function encontrarCaminhoDoIndex() {
-    // Lista de caminhos prováveis onde o Render pode ter jogado seu arquivo
-    const caminhosPossiveis = [
-        path.join(__dirname, "index.html"),
-        path.join(process.cwd(), "index.html"),
-        path.join(__dirname, "..", "index.html"),
-        path.join(process.cwd(), "src", "index.html"),
-        "/opt/render/project/src/index.html"
-    ];
+function buscarArquivoRecursivo(diretorioAlvo, nomeArquivo) {
+    try {
+        const arquivos = fs.readdirSync(diretorioAlvo);
+        
+        for (const arquivo of arquivos) {
+            const caminhoCompleto = path.join(diretorioAlvo, arquivo);
+            const stats = fs.statSync(caminhoCompleto);
+            
+            // Ignora a pasta node_modules para não travar o servidor
+            if (arquivo === "node_modules" || arquivo === ".git") continue;
 
-    for (const caminho of caminhosPossiveis) {
-        if (fs.existsSync(caminho)) {
-            console.log(`[Sucesso] index.html encontrado em: ${caminho}`);
-            return caminho;
+            if (stats.isDirectory()) {
+                const encontrado = buscarArquivoRecursivo(caminhoCompleto, nomeArquivo);
+                if (encontrado) return encontrado;
+            } else if (arquivo.toLowerCase() === nomeArquivo.toLowerCase()) {
+                return caminhoCompleto;
+            }
         }
+    } catch (err) {
+        console.error("Erro ao ler diretório na busca:", diretorioAlvo, err.message);
     }
-    
-    // Se não achar em nenhum lugar, retorna o __dirname padrão para não quebrar a compilação
-    return path.join(__dirname, "index.html");
+    return null;
 }
 
-const caminhoIndexFinal = encontrarCaminhoDoIndex();
-const pastaEstaticaFinal = path.dirname(caminhoIndexFinal);
+// Inicia a busca a partir do diretório base do projeto no Render
+const diretorioRaizRender = "/opt/render/project/src";
+let caminhoIndexFinal = buscarArquivoRecursivo(diretorioRaizRender, "index.html");
 
-// Configura os arquivos estáticos (CSS, JS) baseados na pasta real onde o HTML está
-app.use(express.static(pastaEstaticaFinal));
+// Fallback caso o Render mude o diretório padrão
+if (!caminhoIndexFinal) {
+    caminhoIndexFinal = buscarArquivoRecursivo(process.cwd(), "index.html");
+}
+
+if (caminhoIndexFinal) {
+    console.log(`\n==================================================`);
+    console.log(`🎯 SUCESSO: O arquivo index.html foi localizado em:\n${caminhoIndexFinal}`);
+    console.log(`==================================================\n`);
+    
+    // Configura a pasta onde o index.html está como a pasta de arquivos estáticos
+    app.use(express.static(path.dirname(caminhoIndexFinal)));
+} else {
+    console.log(`\n❌ ERRO CRÍTICO: O arquivo index.html não foi encontrado em NENHUMA pasta do projeto.`);
+    // Fallback padrão para evitar crash completo
+    caminhoIndexFinal = path.join(__dirname, "index.html");
+    app.use(express.static(__dirname));
+}
 // =========================================================================
 
 // Inicialização do Pool PostgreSQL configurado para o Render
 const pool = new Pool({
 	connectionString: process.env.DATABASE_URL,
-	ssl: { rejectUnauthorized: false }, // Obrigatório para conexões seguras no Render
+	ssl: { rejectUnauthorized: false },
 });
 
 // Endpoint: Listar todos os produtos do estoque
@@ -114,7 +134,7 @@ app.post("/api/movimentacoes", async (req, res) => {
 	}
 });
 
-// Rotas principais servindo o arquivo detectado dinamicamente
+// Rotas para servir a aplicação baseada no arquivo encontrado de forma dinâmica
 app.get("/", (req, res) => {
 	res.sendFile(caminhoIndexFinal);
 });
@@ -123,7 +143,7 @@ app.get("*", (req, res) => {
 	res.sendFile(caminhoIndexFinal);
 });
 
-// Configura a porta dinâmica exigida pelo Render
+// Configuração da porta dinâmica do Render
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
 	console.log(`Servidor de controle de estoque rodando na porta ${PORT}`);
