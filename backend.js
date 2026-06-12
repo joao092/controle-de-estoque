@@ -2,19 +2,41 @@ const express = require("express");
 const { Pool } = require("pg");
 const path = require("path");
 const cors = require("cors");
+const fs = require("fs");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// CORREÇÃO: Garante o mapeamento absoluto e correto do diretório atual para arquivos estáticos
-app.use(express.static(path.resolve(__dirname)));
+// Função auxiliar para descobrir onde o index.html está escondido no container do Render
+const obterCaminhoIndex = () => {
+  const caminhosPossiveis = [
+    path.resolve(__dirname, "index.html"),
+    path.join(process.cwd(), "index.html"),
+    path.resolve(__dirname, "..", "index.html"),
+    "/opt/render/project/src/index.html"
+  ];
+
+  for (const caminho of caminhosPossiveis) {
+    if (fs.existsSync(caminho)) {
+      return caminho;
+    }
+  }
+  // Retorna o padrão absoluto caso nenhum seja validado antes
+  return path.resolve(__dirname, "index.html");
+};
+
+const caminhoIndexValido = obterCaminhoIndex();
+const diretorioEstatico = path.dirname(caminhoIndexValido);
+
+// Define a pasta estática baseada no local real do arquivo index.html
+app.use(express.static(diretorioEstatico));
 
 // Inicialização do Pool PostgreSQL configurado para o Render
 const pool = new Pool({
 	connectionString: process.env.DATABASE_URL,
-	ssl: { rejectUnauthorized: false }, // Obrigatório para conexões seguras no Render
+	ssl: { rejectUnauthorized: false },
 });
 
 // Endpoint: Listar todos os produtos do estoque
@@ -85,9 +107,9 @@ app.post("/api/movimentacoes", async (req, res) => {
 	}
 });
 
-// CORREÇÃO: Utiliza path.resolve para evitar falhas de concatenação de strings no ambiente Linux do Render
+// Fallback universal: Serve o arquivo encontrado de forma segura
 app.get("*", (req, res) => {
-	res.sendFile(path.resolve(__dirname, "index.html"));
+	res.sendFile(caminhoIndexValido);
 });
 
 // Configuração dinâmica da porta para o Render
