@@ -2,41 +2,19 @@ const express = require("express");
 const { Pool } = require("pg");
 const path = require("path");
 const cors = require("cors");
-const fs = require("fs");
 require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Função auxiliar para descobrir onde o index.html está escondido no container do Render
-const obterCaminhoIndex = () => {
-  const caminhosPossiveis = [
-    path.resolve(__dirname, "index.html"),
-    path.join(process.cwd(), "index.html"),
-    path.resolve(__dirname, "..", "index.html"),
-    "/opt/render/project/src/index.html"
-  ];
-
-  for (const caminho of caminhosPossiveis) {
-    if (fs.existsSync(caminho)) {
-      return caminho;
-    }
-  }
-  // Retorna o padrão absoluto caso nenhum seja validado antes
-  return path.resolve(__dirname, "index.html");
-};
-
-const caminhoIndexValido = obterCaminhoIndex();
-const diretorioEstatico = path.dirname(caminhoIndexValido);
-
-// Define a pasta estática baseada no local real do arquivo index.html
-app.use(express.static(diretorioEstatico));
+// 1. Configura o Express para servir os arquivos estáticos (CSS, JS do front) da raiz do projeto
+app.use(express.static(path.join(__dirname)));
 
 // Inicialização do Pool PostgreSQL configurado para o Render
 const pool = new Pool({
 	connectionString: process.env.DATABASE_URL,
-	ssl: { rejectUnauthorized: false },
+	ssl: { rejectUnauthorized: false }, // Obrigatório para conexões seguras no Render
 });
 
 // Endpoint: Listar todos os produtos do estoque
@@ -107,9 +85,14 @@ app.post("/api/movimentacoes", async (req, res) => {
 	}
 });
 
-// Fallback universal: Serve o arquivo encontrado de forma segura
+// 2. CORREÇÃO CRÍTICA: Rota explícita para a página principal index.html usando caminho relativo seguro
+app.get("/", (req, res) => {
+	res.sendFile("index.html", { root: __dirname });
+});
+
+// Rota fallback para qualquer outra rota digitada (Garante o comportamento Single Page Application)
 app.get("*", (req, res) => {
-	res.sendFile(caminhoIndexValido);
+	res.sendFile("index.html", { root: __dirname });
 });
 
 // Configuração dinâmica da porta para o Render
