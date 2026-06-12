@@ -2,69 +2,100 @@ const express = require("express");
 const { Pool } = require("pg");
 const path = require("path");
 const cors = require("cors");
-require("dotenv").config(); // Simplificado para pegar o .env da raiz no Render
+require("dotenv").config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Servir arquivos estáticos do Frontend
+app.use(express.static(path.join(__dirname, "/")));
+
+// Inicialização do Pool PostgreSQL configurado para o Render
 const pool = new Pool({
 	connectionString: process.env.DATABASE_URL,
-	ssl: { rejectUnauthorized: false },
+	ssl: { rejectUnauthorized: false }, // Obrigatório para conexões seguras no Render
 });
 
-app.post("/api/cadastro", async (req, res) => {
-	const { nome_completo, idade, email, topico, outroInteresse } = req.body;
-
+// Endpoint: Listar todos os produtos do estoque
+app.get("/api/produtos", async (req, res) => {
 	try {
-		// 1. Insere ou atualiza o usuário (conforme seu SQL)
-		
-		const userRes = await pool.query(
-			"INSERT INTO usuarios (nome_completo, idade, email) VALUES ($1, $2, $3) ON CONFLICT (email) DO UPDATE SET nome_completo = $1 RETURNING id_usuario",
-			[nome_completo, idade, email],
-		);
-
-		const idUsuario = userRes.rows[0].id_usuario;
-
-		// 2. Insere a dúvida na tabela correta (duvidas)
-		const queryDuvida = await pool.query(
-			"INSERT INTO duvidas (id_usuario, topicos, titulo, descricao) VALUES ($1, $2, $3, $4)",
-			[
-				idUsuario,
-				topico,
-				"Interesse Geral",
-				outroInteresse || "Nenhum comentário"
-			],
-		);
-
-		await pool.query(
-			"INSERT INTO logs (acao, descricao) VALUES ($1, $2)",
-			[
-				"Cadastro de usuário ou dúvida.",
-				"Cadastro de usuário ou dúvida realizado.",
-			],
-		);
-
-		return res.status(201).json({
-			mensagem: "Cadastro e dúvida registrados com sucesso!",
-		});
+		const resultado = await pool.query("SELECT * FROM produtos ORDER BY nome ASC");
+		return res.status(200).json(resultado.rows);
 	} catch (err) {
-		console.error(err);
-		return res
-			.status(500)
-			.json({ erro: "Erro ao salvar no banco de dados" });
+		console.error("Erro ao listar produtos:", err);
+		return res.status(500).json({ erro: "Erro interno no servidor." });
 	}
 });
 
-// Servir arquivos estáticos da pasta onde está o index.html
-app.use(express.static(__dirname));
-
-app.get("/", (req, res) => {
-	res.sendFile(path.join(__dirname, "public", "index.html"));
+// Endpoint: Cadastrar novo produto
+app.post("/api/produtos", async (req, res) => {
+	const { nome, quantidade, preco_custo, preco_venda, estoque_minimo } = req.body;
+	try {
+		const query = `
+			INSERT INTO produtos (nome, quantidade, preco_custo, preco_venda, estoque_minimo) 
+			VALUES ($1, $2, $3, $4, $5) RETURNING *`;
+		const valores = [nome, quantidade, preco_custo, preco_venda, estoque_minimo];
+		const resultado = await pool.query(query, valores);
+		
+		return res.status(201).json(resultado.rows[0]);
+	} catch (err) {
+		console.error("Erro ao cadastrar produto:", err);
+		return res.status(500).json({ erro: "Erro ao inserir produto no banco." });
+	}
 });
 
-// Porta dinâmica obrigatória para o Render
-const PORT = process.env.PORT || 3001;
+// Endpoint: Registrar movimentações (Entradas e Saídas) com regras de negócio aplicadas
+app.post("/api/movimentacoes", async (req, res) => {
+	const { id_produto, tipo, quantidade } = req.body;
+
+	try {
+		// Busca o status atual do produto para validação
+		const prodRes = await pool.query("SELECT quantidade, nome FROM produtos WHERE id_produto = $1", [id_produto]);
+		if (prodRes.rows.length === 0) {
+			return res.status(404).json({ erro: "Produto não encontrado." });
+		}
+
+		const produtoAtual = prodRes.rows[0];
+		let novaQuantidade = parseInt(produtoAtual.quantidade);
+
+		if (tipo === "ENTRADA") {
+			novaQuantidade += parseInt(quantidade);
+		} else if (tipo === "SAIDA") {
+			// Regra de Negócio: Bloqueia vendas sem disponibilidade em estoque
+			if (novaQuantidade < parseInt(quantidade)) {
+				return res.status(400).json({ 
+					erro: `Quantidade insuficiente! O produto '${produtoAtual.nome}' possui apenas ${novaQuantidade} unidades em estoque.` 
+				});
+			}
+			novaQuantidade -= parseInt(quantidade);
+		} else {
+			return res.status(400).json({ erro: "Tipo de operação inválido." });
+		}
+
+		// Atualiza o estoque de forma atômica
+		await pool.query("UPDATE produtos SET quantidade = $1 WHERE id_produto = $2", [novaQuantidade, id_produto]);
+
+		// Registra o log histórico da movimentação
+		await pool.query(
+			"INSERT INTO movimentacoes (id_produto, tipo, quantidade, data_operacao) VALUES ($1, $2, $3, NOW())",
+			[id_produto, tipo, quantidade]
+		);
+
+		return res.status(200).json({ mensagem: "Movimentação registrada e estoque atualizado!", novaQuantidade });
+	} catch (err) {
+		console.error("Erro ao processar movimentação:", err);
+		return res.status(500).json({ erro: "Erro ao processar movimentação no banco de dados." });
+	}
+});
+
+// Rota fallback para servir o index.html em qualquer outra requisição
+app.get("*", (req, res) => {
+	res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Configuração dinâmica da porta para o Render (NÃO fixar a porta 3000)
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-	console.log("Servidor online na porta " + PORT);
+	console.log(`Servidor de controle de estoque rodando na porta ${PORT}`);
 });
