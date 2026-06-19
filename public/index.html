@@ -191,7 +191,7 @@
 
   <div class="topbar">
     <span class="topbar-title">Sistema de Controle de Estoque</span>
-    <div class="topbar-user"><div class="avatar">U</div> Usuario &#9662;</div>
+    <div class="topbar-user" id="topbar-user" onclick="abrirModalLogin()"><div class="avatar" id="user-avatar">U</div> <span id="user-name">Entrar</span> &#9662;</div>
   </div>
 
   <main class="main">
@@ -221,11 +221,13 @@
         <form id="form-produto" onsubmit="cadastrarProduto(event)">
           <div class="form-row col-4">
             <div class="form-group"><label>Nome do Produto</label><input type="text" id="prod-nome" placeholder="Ex: Queijo Minas" required></div>
+            <div class="form-group"><label>Categoria</label><input type="text" id="prod-categoria" placeholder="Ex: Alimentos"></div>
+            <div class="form-group"><label>Marca</label><input type="text" id="prod-marca" placeholder="Ex: Marca X"></div>
             <div class="form-group"><label>Quantidade Inicial</label><input type="number" id="prod-qtd" min="0" placeholder="0" required></div>
-            <div class="form-group"><label>Preco de Custo (R$)</label><input type="number" id="prod-custo" step="0.01" min="0" placeholder="0,00" required></div>
-            <div class="form-group"><label>Preco de Venda (R$)</label><input type="number" id="prod-venda" step="0.01" min="0" placeholder="0,00" required></div>
           </div>
           <div class="form-row col-4">
+            <div class="form-group"><label>Preco de Custo (R$)</label><input type="number" id="prod-custo" step="0.01" min="0" placeholder="0,00" required></div>
+            <div class="form-group"><label>Preco de Venda (R$)</label><input type="number" id="prod-venda" step="0.01" min="0" placeholder="0,00" required></div>
             <div class="form-group"><label>Estoque Minimo</label><input type="number" id="prod-min" min="0" placeholder="5" required></div>
           </div>
           <div class="btn-row"><button type="submit" class="btn btn-primary">Cadastrar Produto</button></div>
@@ -234,8 +236,8 @@
       <div class="card">
         <div class="card-title">Lista de Produtos</div>
         <table class="items-table">
-          <thead><tr><th>ID</th><th>Nome</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Preco Custo</th><th>Preco Venda</th></tr></thead>
-          <tbody id="tbody-produtos"><tr><td colspan="6" class="empty-msg">Carregando...</td></tr></tbody>
+          <thead><tr><th>ID</th><th>Nome</th><th>Categoria</th><th>Marca</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Preco Custo</th><th>Preco Venda</th></tr></thead>
+          <tbody id="tbody-produtos"><tr><td colspan="8" class="empty-msg">Carregando...</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -552,11 +554,163 @@
 
   </main>
 
+  <!-- MODAL LOGIN -->
+  <div id="modal-login" class="modal-overlay" style="display:none;">
+    <div class="modal">
+      <div class="modal-header">
+        <span style="font-size:16px;font-weight:600;">Acessar o Sistema</span>
+        <button onclick="fecharModalLogin()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-login" onsubmit="logar(event)" style="padding:1.25rem;">
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="admin@estoque.com" required style="width:100%;">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label>Senha</label>
+          <input type="password" id="login-senha" placeholder="admin123" required style="width:100%;">
+        </div>
+        <div id="login-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL USUARIO (logado) -->
+  <div id="modal-usuario" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:320px;">
+      <div class="modal-header">
+        <span style="font-size:16px;font-weight:600;">Minha Conta</span>
+        <button onclick="fecharModalUsuario()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <div style="padding:1.25rem;">
+        <div style="text-align:center;margin-bottom:1rem;">
+          <div style="width:48px;height:48px;background:var(--primary-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:var(--primary);margin:0 auto 8px;" id="modal-user-avatar">U</div>
+          <div style="font-size:15px;font-weight:600;" id="modal-user-nome">Usuario</div>
+          <div style="font-size:13px;color:var(--text-muted);" id="modal-user-email">email@email.com</div>
+          <div style="font-size:12px;color:var(--primary);margin-top:4px;" id="modal-user-funcao">Funcao</div>
+        </div>
+        <button class="btn btn-outline" style="width:100%;" onclick="logout()">Sair da Conta</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .modal-overlay { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center; }
+    .modal { background:var(--surface);border-radius:10px;width:90%;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,0.15); }
+    .modal-header { display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-bottom:1px solid var(--border); }
+  </style>
+
   <script>
     const API_URL = window.location.hostname === 'localhost' ? 'http://localhost:10000/api' : '/api';
     let produtosCache = [];
     let itensEntrada = [];
     let itensSaida = [];
+    let usuarioLogado = null;
+
+    /* ===== LOGIN ===== */
+    function atualizarInterfaceUsuario() {
+      const nomeEl = document.getElementById('user-name');
+      const avatarEl = document.getElementById('user-avatar');
+
+      if (usuarioLogado) {
+        nomeEl.textContent = usuarioLogado.nome;
+        avatarEl.textContent = usuarioLogado.nome.charAt(0).toUpperCase();
+      } else {
+        nomeEl.textContent = 'Entrar';
+        avatarEl.textContent = 'U';
+      }
+    }
+
+    function abrirModalLogin() {
+      if (usuarioLogado) {
+        document.getElementById('modal-user-nome').textContent = usuarioLogado.nome;
+        document.getElementById('modal-user-email').textContent = usuarioLogado.email;
+        document.getElementById('modal-user-funcao').textContent = usuarioLogado.funcao;
+        document.getElementById('modal-user-avatar').textContent = usuarioLogado.nome.charAt(0).toUpperCase();
+        document.getElementById('modal-usuario').style.display = 'flex';
+        return;
+      }
+      document.getElementById('login-erro').style.display = 'none';
+      document.getElementById('form-login').reset();
+      document.getElementById('modal-login').style.display = 'flex';
+      setTimeout(function() { document.getElementById('login-email').focus(); }, 100);
+    }
+
+    function fecharModalLogin() { document.getElementById('modal-login').style.display = 'none'; }
+    function fecharModalUsuario() { document.getElementById('modal-usuario').style.display = 'none'; }
+
+    async function logar(e) {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const senha = document.getElementById('login-senha').value;
+      const erroEl = document.getElementById('login-erro');
+      erroEl.style.display = 'none';
+
+      try {
+        const res = await fetch(API_URL + '/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ email, senha })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          erroEl.textContent = data.erro || 'Erro ao logar';
+          erroEl.style.display = 'block';
+          return;
+        }
+
+        usuarioLogado = data.usuario;
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('usuario', JSON.stringify(data.usuario));
+        atualizarInterfaceUsuario();
+        fecharModalLogin();
+      } catch(e) {
+        erroEl.textContent = 'Erro de conexao com o servidor';
+        erroEl.style.display = 'block';
+      }
+    }
+
+    async function verificarSessao() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const res = await fetch(API_URL + '/sessao', {
+          headers: { 'Authorization': token }
+        });
+        const data = await res.json();
+
+        if (data.autenticado) {
+          usuarioLogado = data.usuario;
+          localStorage.setItem('usuario', JSON.stringify(data.usuario));
+          atualizarInterfaceUsuario();
+        } else {
+          localStorage.removeItem('token');
+          localStorage.removeItem('usuario');
+        }
+      } catch(e) {
+        console.error('Erro ao verificar sessao:', e);
+      }
+    }
+
+    async function logout() {
+      const token = localStorage.getItem('token');
+
+      try {
+        await fetch(API_URL + '/logout', {
+          method: 'POST',
+          headers: { 'Authorization': token || '' }
+        });
+      } catch(e) {}
+
+      usuarioLogado = null;
+      localStorage.removeItem('token');
+      localStorage.removeItem('usuario');
+      atualizarInterfaceUsuario();
+      fecharModalUsuario();
+    }
 
     function switchSection(id, el) {
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -862,11 +1016,11 @@
     function renderTabelaProdutos() {
       const tbody = document.getElementById('tbody-produtos');
       if (!produtosCache.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum produto cadastrado.</td></tr>'; return;
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">Nenhum produto cadastrado.</td></tr>'; return;
       }
       tbody.innerHTML = produtosCache.map(p => {
         const baixo = parseInt(p.quantidade) <= parseInt(p.estoque_minimo);
-        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td></tr>';
+        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td>' + (p.categoria || '-') + '</td><td>' + (p.marca || '-') + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td></tr>';
       }).join('');
     }
 
@@ -931,10 +1085,11 @@
       if (!itensEntrada.length) { alert('Adicione ao menos um item.'); return; }
       for (var i = 0; i < itensEntrada.length; i++) {
         var item = itensEntrada[i];
-        await fetch(API_URL + '/movimentacoes', {
+        var res = await fetch(API_URL + '/movimentacoes', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ id_produto: parseInt(item.id), tipo: 'ENTRADA', quantidade: item.qtd })
         });
+        if (!res.ok) { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao processar')); return; }
       }
       alert('Entrada salva com sucesso!'); limparEntrada(); carregarProdutos();
     }
@@ -986,6 +1141,8 @@
       e.preventDefault();
       const dados = {
         nome: document.getElementById('prod-nome').value,
+        categoria: document.getElementById('prod-categoria').value,
+        marca: document.getElementById('prod-marca').value,
         quantidade: parseInt(document.getElementById('prod-qtd').value),
         preco_custo: parseFloat(document.getElementById('prod-custo').value),
         preco_venda: parseFloat(document.getElementById('prod-venda').value),
@@ -1004,6 +1161,7 @@
       var mesInicio = hoje.substring(0,7) + '-01';
       document.getElementById('rel-data-ini').value = mesInicio;
       document.getElementById('rel-data-fim').value = hoje;
+      verificarSessao();
       carregarProdutos();
     };
   </script>
