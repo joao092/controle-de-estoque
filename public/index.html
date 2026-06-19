@@ -258,6 +258,15 @@
           <tbody id="tbody-clientes"><tr><td colspan="4" class="empty-msg">Carregando...</td></tr></tbody>
         </table>
       </div>
+
+      <!-- GERENCIAR CATEGORIAS -->
+      <div class="card">
+        <div class="card-title">Gerenciar Categorias</div>
+        <table class="items-table">
+          <thead><tr><th>ID</th><th>Nome</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-categorias"><tr><td colspan="3" class="empty-msg">Carregando...</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- ENTRADAS -->
@@ -1161,6 +1170,7 @@
       carregarClientes();
       carregarClientesSelect();
       carregarCategoriasSelect();
+      carregarCategoriasCard();
     }
 
     /* ===== CATEGORIA MODAL ===== */
@@ -1178,36 +1188,62 @@
       erroEl.style.display = 'none';
       if (!nome) { erroEl.textContent = 'Informe o nome da categoria.'; erroEl.style.display = 'block'; return; }
       try {
-        const res = await fetch(API_URL + '/configuracoes');
-        const cfg = await res.json();
-        let categorias = cfg.preferencias?.categorias || [];
-        if (categorias.includes(nome)) { erroEl.textContent = 'Essa categoria ja existe.'; erroEl.style.display = 'block'; return; }
-        categorias.push(nome);
-        await fetch(API_URL + '/configuracoes', {
-          method: 'PUT',
+        const res = await fetch(API_URL + '/categorias', {
+          method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ preferencias: { categorias: categorias } })
+          body: JSON.stringify({ nome })
         });
+        if (!res.ok) { const err = await res.json(); erroEl.textContent = err.erro || 'Erro ao salvar'; erroEl.style.display = 'block'; return; }
         fecharModalCategoria();
         carregarCategoriasSelect();
+        carregarCategoriasCard();
       } catch(e) {
         erroEl.textContent = 'Erro de conexao';
         erroEl.style.display = 'block';
       }
     }
 
+    async function deletarCategoria(id) {
+      if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
+      try {
+        const res = await fetch(API_URL + '/categorias/' + id, { method: 'DELETE' });
+        if (res.ok) { carregarCategoriasCard(); carregarCategoriasSelect(); }
+        else { const err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
+      } catch(e) { alert('Erro de conexao ao excluir categoria.'); }
+    }
+
     async function carregarCategoriasSelect() {
       const sel = document.getElementById('prod-categoria');
       if (!sel) return;
       try {
-        const res = await fetch(API_URL + '/configuracoes');
-        const cfg = await res.json();
-        const categorias = cfg.preferencias?.categorias || [];
+        const res = await fetch(API_URL + '/categorias');
+        if (!res.ok) return;
+        const lista = await res.json();
+        if (!Array.isArray(lista)) return;
         sel.innerHTML = '<option value="">Selecione a categoria</option>';
-        categorias.forEach(function(c) {
-          sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
+        lista.forEach(function(c) {
+          sel.innerHTML += '<option value="' + c.nome + '">' + c.nome + '</option>';
         });
       } catch(e) {
+        console.error('Erro ao carregar categorias:', e);
+      }
+    }
+
+    async function carregarCategoriasCard() {
+      const tbody = document.getElementById('tbody-categorias');
+      if (!tbody) return;
+      try {
+        const res = await fetch(API_URL + '/categorias');
+        if (!res.ok) { tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Erro ao carregar categorias.</td></tr>'; return; }
+        const lista = await res.json();
+        if (!Array.isArray(lista) || !lista.length) {
+          tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Nenhuma categoria cadastrada.</td></tr>'; return;
+        }
+        tbody.innerHTML = lista.map(function(c) {
+          return '<tr><td>' + c.id_categoria + '</td><td>' + c.nome + '</td><td><button class="btn-delete" onclick="deletarCategoria(' + c.id_categoria + ')">&#128465;</button></td></tr>';
+        }).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Erro de conexao.</td></tr>';
         console.error('Erro ao carregar categorias:', e);
       }
     }
