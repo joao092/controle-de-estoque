@@ -493,6 +493,9 @@ app.delete("/api/produtos/:id", async (req, res) => {
         return res.json({ mensagem: "Produto removido" });
     } catch (err) {
         console.error("ERRO DELETE PRODUTO:", err.message);
+        if (err.code === "23503") {
+            return res.status(400).json({ erro: "Nao e possivel excluir este produto pois existem movimentacoes (entradas/saidas) vinculadas a ele. Exclua os registros relacionados primeiro." });
+        }
         return res.status(500).json({ erro: err.message });
     }
 });
@@ -604,6 +607,9 @@ app.delete("/api/fornecedores/:id", async (req, res) => {
         return res.json({ mensagem: "Fornecedor removido" });
     } catch (err) {
         console.error("ERRO DELETE FORNECEDOR:", err.message);
+        if (err.code === "23503") {
+            return res.status(400).json({ erro: "Nao e possivel excluir este fornecedor pois existem produtos vinculados a ele. Remova ou altere os produtos primeiro." });
+        }
         return res.status(500).json({ erro: err.message });
     }
 });
