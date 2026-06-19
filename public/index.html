@@ -222,7 +222,7 @@
           <div class="form-row col-4">
             <div class="form-group"><label>Nome do Produto</label><input type="text" id="prod-nome" placeholder="Ex: Queijo Minas" required></div>
             <div class="form-group"><label>Categoria</label><input type="text" id="prod-categoria" placeholder="Ex: Alimentos"></div>
-            <div class="form-group"><label>Fornecedor</label><select id="prod-fornecedor"><option value="">Selecione</option></select></div>
+            <div class="form-group"><label>Fornecedor</label><div style="display:flex;gap:4px;"><select id="prod-fornecedor" style="flex:1;"><option value="">Selecione</option></select><button type="button" class="btn-add" style="height:36px;padding:0 10px;font-size:16px;line-height:1;" onclick="abrirModalFornecedor()" title="Novo fornecedor">+</button></div></div>
             <div class="form-group"><label>Quantidade Inicial</label><input type="number" id="prod-qtd" min="0" placeholder="0" required></div>
           </div>
           <div class="form-row col-4">
@@ -251,7 +251,7 @@
         <div class="form-row col-3">
           <div class="form-group">
             <label>Fornecedor</label>
-            <select id="ent-fornecedor"><option value="">Selecione o fornecedor</option><option>Fornecedor A</option><option>Fornecedor B</option></select>
+            <div style="display:flex;gap:4px;"><select id="ent-fornecedor" style="flex:1;"><option value="">Selecione o fornecedor</option></select><button type="button" class="btn-add" style="height:36px;padding:0 10px;font-size:16px;line-height:1;" onclick="abrirModalFornecedor()" title="Novo fornecedor">+</button></div>
           </div>
           <div class="form-group"><label>Data da Entrada</label><input type="date" id="ent-data"></div>
         </div>
@@ -572,6 +572,28 @@
         </div>
         <div id="login-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
         <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL FORNECEDOR -->
+  <div id="modal-fornecedor" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:360px;">
+      <div class="modal-header">
+        <span style="font-size:16px;font-weight:600;">Novo Fornecedor</span>
+        <button onclick="fecharModalFornecedor()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-fornecedor" onsubmit="salvarFornecedor(event)" style="padding:1.25rem;">
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Nome do Fornecedor</label>
+          <input type="text" id="forn-nome" placeholder="Ex: Distribuidora X" required style="width:100%;">
+        </div>
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label>Contato (opcional)</label>
+          <input type="text" id="forn-contato" placeholder="Ex: Joao - (12) 99999-0000" style="width:100%;">
+        </div>
+        <div id="forn-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Fornecedor</button>
       </form>
     </div>
   </div>
@@ -999,16 +1021,46 @@
         const res = await fetch(API_URL + '/produtos');
         produtosCache = await res.json();
       } catch(e) { produtosCache = []; }
-      carregarFornecedoresSelects();
+      await carregarFornecedoresSelects();
       renderTabelaProdutos();
       preencherSelects();
       atualizarDashboard();
     }
 
+    /* ===== FORNECEDOR MODAL ===== */
+    function abrirModalFornecedor() {
+      document.getElementById('form-fornecedor').reset();
+      document.getElementById('forn-erro').style.display = 'none';
+      document.getElementById('modal-fornecedor').style.display = 'flex';
+    }
+    function fecharModalFornecedor() { document.getElementById('modal-fornecedor').style.display = 'none'; }
+
+    async function salvarFornecedor(e) {
+      e.preventDefault();
+      const nome = document.getElementById('forn-nome').value;
+      const contato = document.getElementById('forn-contato').value;
+      const erroEl = document.getElementById('forn-erro');
+      erroEl.style.display = 'none';
+      try {
+        const res = await fetch(API_URL + '/fornecedores', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({ nome, contato })
+        });
+        if (!res.ok) { var err = await res.json(); erroEl.textContent = err.erro || 'Erro ao salvar'; erroEl.style.display = 'block'; return; }
+        fecharModalFornecedor();
+        carregarFornecedoresSelects();
+      } catch(e) {
+        erroEl.textContent = 'Erro de conexao';
+        erroEl.style.display = 'block';
+      }
+    }
+
     async function carregarFornecedoresSelects() {
       try {
         const res = await fetch(API_URL + '/fornecedores');
+        if (!res.ok) return;
         const lista = await res.json();
+        if (!Array.isArray(lista)) return;
         ['prod-fornecedor', 'ent-fornecedor'].forEach(function(id) {
           const sel = document.getElementById(id);
           if (!sel) return;
@@ -1017,7 +1069,9 @@
             sel.innerHTML += '<option value="' + f.id_fornecedor + '">' + f.nome + '</option>';
           });
         });
-      } catch(e) {}
+      } catch(e) {
+        console.error('Erro ao carregar fornecedores:', e);
+      }
     }
 
     function renderTabelaProdutos() {
