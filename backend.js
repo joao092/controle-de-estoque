@@ -159,6 +159,19 @@ const pool = new Pool({
 
 (async () => {
     try {
+        await pool.query(`CREATE TABLE IF NOT EXISTS clientes (
+            id_cliente SERIAL PRIMARY KEY,
+            nome VARCHAR(150) NOT NULL,
+            contato VARCHAR(50) DEFAULT ''
+        )`);
+        console.log("Tabela clientes criada");
+    } catch (err) {
+        console.error("Erro clientes:", err.message);
+    }
+})();
+
+(async () => {
+    try {
         await pool.query(`CREATE TABLE IF NOT EXISTS produtos (
             id_produto SERIAL PRIMARY KEY,
             nome VARCHAR(150) NOT NULL,
@@ -620,6 +633,44 @@ app.delete("/api/fornecedores/:id", async (req, res) => {
         if (err.code === "23503") {
             return res.status(400).json({ erro: "Nao e possivel excluir este fornecedor pois existem produtos vinculados a ele. Remova ou altere os produtos primeiro." });
         }
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+/* ==========================================================
+   CLIENTES
+========================================================== */
+
+app.get("/api/clientes", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM clientes ORDER BY nome ASC");
+        return res.json(result.rows);
+    } catch (err) {
+        console.error("ERRO GET CLIENTES:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.post("/api/clientes", async (req, res) => {
+    try {
+        const { nome, contato } = req.body;
+        const result = await pool.query(
+            "INSERT INTO clientes (nome, contato) VALUES ($1,$2) RETURNING *",
+            [nome, contato||'']
+        );
+        return res.status(201).json(result.rows[0]);
+    } catch (err) {
+        console.error("ERRO INSERT CLIENTE:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.delete("/api/clientes/:id", async (req, res) => {
+    try {
+        await pool.query("DELETE FROM clientes WHERE id_cliente = $1", [req.params.id]);
+        return res.json({ mensagem: "Cliente removido" });
+    } catch (err) {
+        console.error("ERRO DELETE CLIENTE:", err.message);
         return res.status(500).json({ erro: err.message });
     }
 });
