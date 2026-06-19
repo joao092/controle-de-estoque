@@ -61,12 +61,11 @@ if (caminhoIndexFinal) {
 // =========================================================================
 
 // Inicialização do Pool PostgreSQL configurado para o Render
-const pool = 
-	console.log("DATABASE_URL =", process.env.DATABASE_URL);
+console.log("DATABASE_URL =", process.env.DATABASE_URL);
 
-	new Pool({
-	connectionString: process.env.DATABASE_URL,
-	ssl: { rejectUnauthorized: false },
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
 });
 
 // Endpoint: Listar todos os produtos do estoque
