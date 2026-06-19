@@ -136,6 +136,10 @@ const pool = new Pool({
             )
         `);
 
+        try { await pool.query("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria VARCHAR(100) DEFAULT ''"); } catch(e) {}
+        try { await pool.query("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS marca VARCHAR(100) DEFAULT ''"); } catch(e) {}
+        try { await pool.query("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS data_cadastro DATE DEFAULT CURRENT_DATE"); } catch(e) {}
+
         console.log("Tabela produtos pronta");
     } catch (err) {
         console.error("Erro ao criar tabela produtos");
@@ -154,6 +158,12 @@ const pool = new Pool({
                 data_movimentacao TIMESTAMP DEFAULT NOW()
             )
         `);
+
+        try { await pool.query("ALTER TABLE movimentacoes ADD COLUMN IF NOT EXISTS id_movimentacao SERIAL"); } catch(e) {}
+        try { await pool.query("ALTER TABLE movimentacoes ADD COLUMN IF NOT EXISTS id_produto INTEGER REFERENCES produtos(id_produto)"); } catch(e) {}
+        try { await pool.query("ALTER TABLE movimentacoes ADD COLUMN IF NOT EXISTS tipo VARCHAR(20) CHECK (tipo IN ('ENTRADA', 'SAIDA'))"); } catch(e) {}
+        try { await pool.query("ALTER TABLE movimentacoes ADD COLUMN IF NOT EXISTS quantidade INTEGER"); } catch(e) {}
+        try { await pool.query("ALTER TABLE movimentacoes ADD COLUMN IF NOT EXISTS data_movimentacao TIMESTAMP DEFAULT NOW()"); } catch(e) {}
 
         console.log("Tabela movimentacoes pronta");
     } catch (err) {
@@ -188,6 +198,11 @@ const pool = new Pool({
 
             console.log("Usuario padrao criado: admin@estoque.com / admin123");
         }
+
+        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email VARCHAR(255) UNIQUE"); } catch(e) {}
+        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS senha VARCHAR(255)"); } catch(e) {}
+        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS funcao VARCHAR(100) DEFAULT 'Operador'"); } catch(e) {}
+        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token VARCHAR(255) DEFAULT NULL"); } catch(e) {}
 
         console.log("Tabela usuarios pronta");
     } catch (err) {
