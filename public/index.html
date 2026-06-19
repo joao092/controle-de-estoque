@@ -221,7 +221,7 @@
         <form id="form-produto" onsubmit="cadastrarProduto(event)">
           <div class="form-row col-4">
             <div class="form-group"><label>Nome do Produto</label><input type="text" id="prod-nome" placeholder="Ex: Queijo Minas" required></div>
-            <div class="form-group"><label>Categoria</label><input type="text" id="prod-categoria" placeholder="Ex: Alimentos"></div>
+            <div class="form-group"><label>Categoria</label><div style="display:flex;gap:4px;"><select id="prod-categoria" style="flex:1;"><option value="">Selecione a categoria</option></select><button type="button" class="btn-add" style="height:36px;padding:0 10px;font-size:16px;line-height:1;" onclick="abrirModalCategoria()" title="Nova categoria">+</button></div></div>
             <div class="form-group"><label>Fornecedor</label><div style="display:flex;gap:4px;"><select id="prod-fornecedor" style="flex:1;"><option value="">Selecione</option></select><button type="button" class="btn-add" style="height:36px;padding:0 10px;font-size:16px;line-height:1;" onclick="abrirModalFornecedor()" title="Novo fornecedor">+</button></div></div>
             <div class="form-group"><label>Quantidade Inicial</label><input type="number" id="prod-qtd" min="0" placeholder="0" required></div>
           </div>
@@ -612,6 +612,24 @@
         </div>
         <div id="forn-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
         <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Fornecedor</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL CATEGORIA -->
+  <div id="modal-categoria" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:360px;">
+      <div class="modal-header">
+        <span style="font-size:16px;font-weight:600;">Nova Categoria</span>
+        <button onclick="fecharModalCategoria()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-categoria" onsubmit="salvarCategoria(event)" style="padding:1.25rem;">
+        <div class="form-group" style="margin-bottom:1rem;">
+          <label>Nome da Categoria</label>
+          <input type="text" id="cat-nome" placeholder="Ex: Alimentos" required style="width:100%;">
+        </div>
+        <div id="cat-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Categoria</button>
       </form>
     </div>
   </div>
@@ -1142,6 +1160,56 @@
       carregarFornecedoresCard();
       carregarClientes();
       carregarClientesSelect();
+      carregarCategoriasSelect();
+    }
+
+    /* ===== CATEGORIA MODAL ===== */
+    function abrirModalCategoria() {
+      document.getElementById('form-categoria').reset();
+      document.getElementById('cat-erro').style.display = 'none';
+      document.getElementById('modal-categoria').style.display = 'flex';
+    }
+    function fecharModalCategoria() { document.getElementById('modal-categoria').style.display = 'none'; }
+
+    async function salvarCategoria(e) {
+      e.preventDefault();
+      const nome = document.getElementById('cat-nome').value.trim();
+      const erroEl = document.getElementById('cat-erro');
+      erroEl.style.display = 'none';
+      if (!nome) { erroEl.textContent = 'Informe o nome da categoria.'; erroEl.style.display = 'block'; return; }
+      try {
+        const res = await fetch(API_URL + '/configuracoes');
+        const cfg = await res.json();
+        let categorias = cfg.preferencias?.categorias || [];
+        if (categorias.includes(nome)) { erroEl.textContent = 'Essa categoria ja existe.'; erroEl.style.display = 'block'; return; }
+        categorias.push(nome);
+        await fetch(API_URL + '/configuracoes', {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ preferencias: { categorias: categorias } })
+        });
+        fecharModalCategoria();
+        carregarCategoriasSelect();
+      } catch(e) {
+        erroEl.textContent = 'Erro de conexao';
+        erroEl.style.display = 'block';
+      }
+    }
+
+    async function carregarCategoriasSelect() {
+      const sel = document.getElementById('prod-categoria');
+      if (!sel) return;
+      try {
+        const res = await fetch(API_URL + '/configuracoes');
+        const cfg = await res.json();
+        const categorias = cfg.preferencias?.categorias || [];
+        sel.innerHTML = '<option value="">Selecione a categoria</option>';
+        categorias.forEach(function(c) {
+          sel.innerHTML += '<option value="' + c + '">' + c + '</option>';
+        });
+      } catch(e) {
+        console.error('Erro ao carregar categorias:', e);
+      }
     }
 
     /* ===== FORNECEDOR MODAL ===== */
