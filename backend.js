@@ -486,6 +486,17 @@ app.post("/api/produtos", async (req, res) => {
     }
 });
 
+app.delete("/api/produtos/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query("DELETE FROM produtos WHERE id_produto = $1", [id]);
+        return res.json({ mensagem: "Produto removido" });
+    } catch (err) {
+        console.error("ERRO DELETE PRODUTO:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
 /* ==========================================================
    ENTRADAS
 ========================================================== */
