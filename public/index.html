@@ -222,7 +222,7 @@
           <div class="form-row col-4">
             <div class="form-group"><label>Nome do Produto</label><input type="text" id="prod-nome" placeholder="Ex: Queijo Minas" required></div>
             <div class="form-group"><label>Categoria</label><input type="text" id="prod-categoria" placeholder="Ex: Alimentos"></div>
-            <div class="form-group"><label>Marca</label><input type="text" id="prod-marca" placeholder="Ex: Marca X"></div>
+            <div class="form-group"><label>Fornecedor</label><select id="prod-fornecedor"><option value="">Selecione</option></select></div>
             <div class="form-group"><label>Quantidade Inicial</label><input type="number" id="prod-qtd" min="0" placeholder="0" required></div>
           </div>
           <div class="form-row col-4">
@@ -236,7 +236,7 @@
       <div class="card">
         <div class="card-title">Lista de Produtos</div>
         <table class="items-table">
-          <thead><tr><th>ID</th><th>Nome</th><th>Categoria</th><th>Marca</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Preco Custo</th><th>Preco Venda</th></tr></thead>
+          <thead><tr><th>ID</th><th>Nome</th><th>Categoria</th><th>Fornecedor</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Preco Custo</th><th>Preco Venda</th></tr></thead>
           <tbody id="tbody-produtos"><tr><td colspan="8" class="empty-msg">Carregando...</td></tr></tbody>
         </table>
       </div>
@@ -300,7 +300,7 @@
         <div class="form-row col-2">
           <div class="form-group">
             <label>Cliente (opcional)</label>
-            <select id="sai-cliente"><option value="">Selecione o cliente</option><option>Cliente A</option><option>Cliente B</option></select>
+            <input type="text" id="sai-cliente" placeholder="Nome do cliente">
           </div>
           <div class="form-group"><label>Observacao (opcional)</label><input type="text" id="sai-obs" placeholder="Digite uma observacao"></div>
         </div>
@@ -563,8 +563,8 @@
       </div>
       <form id="form-login" onsubmit="logar(event)" style="padding:1.25rem;">
         <div class="form-group" style="margin-bottom:0.75rem;">
-          <label>Email</label>
-          <input type="email" id="login-email" placeholder="admin@estoque.com" required style="width:100%;">
+          <label>Nome de Usuario</label>
+          <input type="text" id="login-nome" placeholder="Administrador" required style="width:100%;">
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
           <label>Senha</label>
@@ -642,7 +642,7 @@
 
     async function logar(e) {
       e.preventDefault();
-      const email = document.getElementById('login-email').value;
+      const nome = document.getElementById('login-nome').value;
       const senha = document.getElementById('login-senha').value;
       const erroEl = document.getElementById('login-erro');
       erroEl.style.display = 'none';
@@ -651,7 +651,7 @@
         const res = await fetch(API_URL + '/login', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ email, senha })
+          body: JSON.stringify({ nome, senha })
         });
         const data = await res.json();
 
@@ -742,7 +742,7 @@
 
       let movs = [];
       try {
-        const res = await fetch(API_URL + '/movimentacoes');
+        const res = await fetch(API_URL + '/relatorios/movimentacoes');
         movs = await res.json();
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="5" class="empty-msg">Erro ao buscar movimentacoes. Verifique a conexao com a API.</td></tr>';
@@ -751,8 +751,8 @@
 
       if (!Array.isArray(movs)) movs = [];
       if (tipo) movs = movs.filter(m => m.tipo === tipo);
-      if (ini) movs = movs.filter(m => m.data_movimentacao && m.data_movimentacao.substring(0,10) >= ini);
-      if (fim) movs = movs.filter(m => m.data_movimentacao && m.data_movimentacao.substring(0,10) <= fim);
+      if (ini) movs = movs.filter(m => m.data_mov && m.data_mov.substring(0,10) >= ini);
+      if (fim) movs = movs.filter(m => m.data_mov && m.data_mov.substring(0,10) <= fim);
 
       let totalE = 0, totalS = 0;
       movs.forEach(m => {
@@ -771,12 +771,11 @@
       }
 
       tbody.innerHTML = movs.map(function(m, i) {
-        const data = m.data_movimentacao ? new Date(m.data_movimentacao).toLocaleDateString('pt-BR') : '-';
+        const data = m.data_mov ? new Date(m.data_mov).toLocaleDateString('pt-BR') : '-';
         const badge = m.tipo === 'ENTRADA'
           ? '<span class="badge badge-entrada">ENTRADA</span>'
           : '<span class="badge badge-saida">SAIDA</span>';
-        const prod = produtosCache.find(p => p.id_produto == m.id_produto);
-        const nomeProd = prod ? prod.nome : ('Produto #' + m.id_produto);
+        const nomeProd = m.produto_nome || ('Produto #' + m.id_produto);
         return '<tr><td>' + (i+1) + '</td><td>' + nomeProd + '</td><td>' + badge + '</td><td>' + m.quantidade + '</td><td>' + data + '</td></tr>';
       }).join('');
     }
@@ -832,30 +831,24 @@
     /* ===== RELATORIO: MAIS VENDIDOS ===== */
     async function gerarRelatorioMaisVendidos() {
       const tbody = document.getElementById('tbody-rel-vendidos');
-      let movs = [];
+      let ranking = [];
       try {
-        const res = await fetch(API_URL + '/movimentacoes');
-        movs = await res.json();
-      } catch(e) { movs = []; }
-      if (!Array.isArray(movs)) movs = [];
-
-      const saidas = movs.filter(m => m.tipo === 'SAIDA');
-      const contagem = {};
-      saidas.forEach(function(m) {
-        contagem[m.id_produto] = (contagem[m.id_produto] || 0) + (parseInt(m.quantidade)||0);
-      });
-      const totalSaidas = Object.values(contagem).reduce((a,b)=>a+b,0) || 1;
-      const ranking = Object.entries(contagem).sort((a,b)=>b[1]-a[1]).slice(0,10);
+        const res = await fetch(API_URL + '/relatorios/mais-vendidos');
+        ranking = await res.json();
+      } catch(e) { ranking = []; }
+      if (!Array.isArray(ranking)) ranking = [];
 
       if (!ranking.length) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Nenhuma saida registrada ainda.</td></tr>'; return;
       }
-      tbody.innerHTML = ranking.map(function([idP, qty], i) {
-        const prod = produtosCache.find(p => p.id_produto == idP);
-        const nome = prod ? prod.nome : ('Produto #' + idP);
-        const pct = ((qty/totalSaidas)*100).toFixed(1);
+
+      const total = ranking.reduce((a, b) => a + parseInt(b.total_vendido || 0), 0) || 1;
+
+      tbody.innerHTML = ranking.map(function(item, i) {
+        const qty = parseInt(item.total_vendido);
+        const pct = ((qty / total) * 100).toFixed(1);
         const bar = '<div style="background:var(--primary-light);border-radius:4px;height:8px;width:100%;margin-top:4px;"><div style="background:var(--primary);height:8px;border-radius:4px;width:'+pct+'%"></div></div>';
-        return '<tr><td>' + (i+1) + 'º</td><td>' + nome + '</td><td style="font-weight:600">' + qty + '</td><td style="min-width:120px"><span style="font-size:12px;color:var(--text-muted)">' + pct + '%</span>' + bar + '</td></tr>';
+        return '<tr><td>' + (i+1) + 'º</td><td>' + item.nome + '</td><td style="font-weight:600">' + qty + '</td><td style="min-width:120px"><span style="font-size:12px;color:var(--text-muted)">' + pct + '%</span>' + bar + '</td></tr>';
       }).join('');
     }
 
@@ -915,7 +908,6 @@
         if (pref.fornecedores) {
           const cont = document.getElementById('cfg-fornecedores');
           cont.innerHTML = pref.fornecedores.map(f => '<span class="tag">' + f + ' <button onclick="removerFornecedor(this)">&#215;</button></span>').join('');
-          atualizarSelectFornecedores(pref.fornecedores);
         }
       } catch(e) {
         console.error('Erro ao carregar configuracoes:', e);
@@ -960,7 +952,6 @@
           body: JSON.stringify({ preferencias })
         });
         if (res.ok) {
-          atualizarSelectFornecedores(forns);
           alert('Preferencias salvas!');
         } else {
           alert('Erro ao salvar preferencias.');
@@ -1008,9 +999,25 @@
         const res = await fetch(API_URL + '/produtos');
         produtosCache = await res.json();
       } catch(e) { produtosCache = []; }
+      carregarFornecedoresSelects();
       renderTabelaProdutos();
       preencherSelects();
       atualizarDashboard();
+    }
+
+    async function carregarFornecedoresSelects() {
+      try {
+        const res = await fetch(API_URL + '/fornecedores');
+        const lista = await res.json();
+        ['prod-fornecedor', 'ent-fornecedor'].forEach(function(id) {
+          const sel = document.getElementById(id);
+          if (!sel) return;
+          sel.innerHTML = '<option value="">Selecione o fornecedor</option>';
+          lista.forEach(function(f) {
+            sel.innerHTML += '<option value="' + f.id_fornecedor + '">' + f.nome + '</option>';
+          });
+        });
+      } catch(e) {}
     }
 
     function renderTabelaProdutos() {
@@ -1020,7 +1027,7 @@
       }
       tbody.innerHTML = produtosCache.map(p => {
         const baixo = parseInt(p.quantidade) <= parseInt(p.estoque_minimo);
-        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td>' + (p.categoria || '-') + '</td><td>' + (p.marca || '-') + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td></tr>';
+        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td>' + (p.categoria || '-') + '</td><td>' + (p.fornecedor_nome || '-') + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td></tr>';
       }).join('');
     }
 
@@ -1083,11 +1090,23 @@
 
     async function salvarEntrada() {
       if (!itensEntrada.length) { alert('Adicione ao menos um item.'); return; }
+      if (!usuarioLogado) { alert('Faca login para registrar entrada.'); return; }
+      var idFornecedor = parseInt(document.getElementById('ent-fornecedor').value) || null;
+      var dataEntrada = document.getElementById('ent-data').value;
+      var observacao = document.getElementById('ent-obs').value;
       for (var i = 0; i < itensEntrada.length; i++) {
         var item = itensEntrada[i];
-        var res = await fetch(API_URL + '/movimentacoes', {
+        var res = await fetch(API_URL + '/entradas', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ id_produto: parseInt(item.id), tipo: 'ENTRADA', quantidade: item.qtd })
+          body: JSON.stringify({
+            id_produto: parseInt(item.id),
+            id_fornecedor: idFornecedor,
+            id_usuario: usuarioLogado.id,
+            quantidade: item.qtd,
+            valor_unitario: item.val,
+            data_entrada: dataEntrada,
+            observacao: observacao || null
+          })
         });
         if (!res.ok) { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao processar')); return; }
       }
@@ -1125,11 +1144,23 @@
 
     async function salvarSaida() {
       if (!itensSaida.length) { alert('Adicione ao menos um item.'); return; }
+      if (!usuarioLogado) { alert('Faca login para registrar saida.'); return; }
+      var dataSaida = document.getElementById('sai-data').value;
+      var cliente = document.getElementById('sai-cliente').value;
+      var observacao = document.getElementById('sai-obs').value;
       for (var i = 0; i < itensSaida.length; i++) {
         var item = itensSaida[i];
-        var res = await fetch(API_URL + '/movimentacoes', {
+        var res = await fetch(API_URL + '/saidas', {
           method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({ id_produto: parseInt(item.id), tipo: 'SAIDA', quantidade: item.qtd })
+          body: JSON.stringify({
+            id_produto: parseInt(item.id),
+            id_usuario: usuarioLogado.id,
+            quantidade: item.qtd,
+            motivo: item.motivo || null,
+            cliente: cliente || null,
+            data_saida: dataSaida,
+            observacao: observacao || null
+          })
         });
         var data = await res.json();
         if (!res.ok) { alert('Erro: ' + (data.erro || 'Falha ao processar')); return; }
@@ -1142,7 +1173,7 @@
       const dados = {
         nome: document.getElementById('prod-nome').value,
         categoria: document.getElementById('prod-categoria').value,
-        marca: document.getElementById('prod-marca').value,
+        id_fornecedor: parseInt(document.getElementById('prod-fornecedor').value) || null,
         quantidade: parseInt(document.getElementById('prod-qtd').value),
         preco_custo: parseFloat(document.getElementById('prod-custo').value),
         preco_venda: parseFloat(document.getElementById('prod-venda').value),
