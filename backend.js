@@ -136,9 +136,24 @@ const pool = new Pool({
             )
         `);
 
-        try { await pool.query("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS categoria VARCHAR(100) DEFAULT ''"); } catch(e) {}
-        try { await pool.query("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS marca VARCHAR(100) DEFAULT ''"); } catch(e) {}
-        try { await pool.query("ALTER TABLE produtos ADD COLUMN IF NOT EXISTS data_cadastro DATE DEFAULT CURRENT_DATE"); } catch(e) {}
+        const colProd = await pool.query(`
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'produtos'
+        `);
+        const colsProd = colProd.rows.map(r => r.column_name);
+
+        const colsNecessarias = {
+            categoria: "VARCHAR(100) DEFAULT ''",
+            marca: "VARCHAR(100) DEFAULT ''",
+            data_cadastro: "DATE DEFAULT CURRENT_DATE"
+        };
+
+        for (const [col, tipo] of Object.entries(colsNecessarias)) {
+            if (!colsProd.includes(col)) {
+                await pool.query(`ALTER TABLE produtos ADD COLUMN ${col} ${tipo}`);
+                console.log("Coluna " + col + " adicionada a produtos");
+            }
+        }
 
         console.log("Tabela produtos pronta");
     } catch (err) {
@@ -185,9 +200,29 @@ const pool = new Pool({
             )
         `);
 
+        const colunas = await pool.query(`
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'usuarios'
+        `);
+        const colunasExistentes = colunas.rows.map(r => r.column_name);
+
+        const colunasNecessarias = {
+            email: "VARCHAR(255) UNIQUE NOT NULL",
+            senha: "VARCHAR(255) NOT NULL",
+            funcao: "VARCHAR(100) DEFAULT 'Operador'",
+            token: "VARCHAR(255) DEFAULT NULL"
+        };
+
+        for (const [col, tipo] of Object.entries(colunasNecessarias)) {
+            if (!colunasExistentes.includes(col)) {
+                await pool.query(`ALTER TABLE usuarios ADD COLUMN ${col} ${tipo}`);
+                console.log("Coluna " + col + " adicionada a usuarios");
+            }
+        }
+
         const existe = await pool.query("SELECT COUNT(*) FROM usuarios");
 
-            if (parseInt(existe.rows[0].count) === 0) {
+        if (parseInt(existe.rows[0].count) === 0) {
             const senhaPadrao = crypto.createHash("sha256").update("admin123").digest("hex");
 
             await pool.query(
@@ -198,11 +233,6 @@ const pool = new Pool({
 
             console.log("Usuario padrao criado: admin@estoque.com / admin123");
         }
-
-        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS email VARCHAR(255) UNIQUE"); } catch(e) {}
-        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS senha VARCHAR(255)"); } catch(e) {}
-        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS funcao VARCHAR(100) DEFAULT 'Operador'"); } catch(e) {}
-        try { await pool.query("ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS token VARCHAR(255) DEFAULT NULL"); } catch(e) {}
 
         console.log("Tabela usuarios pronta");
     } catch (err) {
