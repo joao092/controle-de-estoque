@@ -115,3 +115,8 @@ app.post("/api/produtos", async (req, res) => {
         });
     }
 });
+// Configuração da porta dinâmica do Render
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, () => {
+	console.log(`Servidor de controle de estoque rodando na porta ${PORT}`);
+});
