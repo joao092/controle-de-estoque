@@ -158,6 +158,29 @@ const pool = new Pool({
     }
 })();
 
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS configuracoes (
+                id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+                dados JSONB DEFAULT '{}',
+                preferencias JSONB DEFAULT '{}'
+            )
+        `);
+
+        await pool.query(`
+            INSERT INTO configuracoes (id, dados, preferencias)
+            VALUES (1, '{}', '{}')
+            ON CONFLICT (id) DO NOTHING
+        `);
+
+        console.log("Tabela configuracoes pronta");
+    } catch (err) {
+        console.error("Erro ao criar tabela configuracoes");
+        console.error(err);
+    }
+})();
+
 /* ==========================================================
    ROTA PRINCIPAL
 ========================================================== */
@@ -291,6 +314,64 @@ app.post("/api/movimentacoes", async (req, res) => {
         return res.status(201).json(resultado.rows[0]);
     } catch (err) {
         console.error("ERRO INSERT MOVIMENTACAO:");
+        console.error(err);
+
+        return res.status(500).json({
+            erro: err.message
+        });
+    }
+});
+
+/* ==========================================================
+   CONFIGURACOES - GET
+========================================================== */
+
+app.get("/api/configuracoes", async (req, res) => {
+    try {
+        const resultado = await pool.query(
+            "SELECT dados, preferencias FROM configuracoes WHERE id = 1"
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(200).json({ dados: {}, preferencias: {} });
+        }
+
+        return res.status(200).json(resultado.rows[0]);
+    } catch (err) {
+        console.error("ERRO GET CONFIGURACOES:");
+        console.error(err);
+
+        return res.status(500).json({
+            erro: err.message
+        });
+    }
+});
+
+/* ==========================================================
+   CONFIGURACOES - PUT
+========================================================== */
+
+app.put("/api/configuracoes", async (req, res) => {
+    try {
+        const { dados, preferencias } = req.body;
+
+        const resultado = await pool.query(
+            `
+            UPDATE configuracoes
+            SET dados = COALESCE($1::jsonb, dados),
+                preferencias = COALESCE($2::jsonb, preferencias)
+            WHERE id = 1
+            RETURNING dados, preferencias
+            `,
+            [
+                dados ? JSON.stringify(dados) : null,
+                preferencias ? JSON.stringify(preferencias) : null
+            ]
+        );
+
+        return res.status(200).json(resultado.rows[0]);
+    } catch (err) {
+        console.error("ERRO PUT CONFIGURACOES:");
         console.error(err);
 
         return res.status(500).json({
