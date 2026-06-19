@@ -79,72 +79,39 @@ app.get("/api/produtos", async (req, res) => {
 
 // Endpoint: Cadastrar novo produto
 app.post("/api/produtos", async (req, res) => {
-	const { nome, quantidade, preco_custo, preco_venda, estoque_minimo } = req.body;
-	try {
-		const query = `
-			INSERT INTO produtos (nome, quantidade, preco_custo, preco_venda, estoque_minimo) 
-			VALUES ($1, $2, $3, $4, $5) RETURNING *`;
-		const valores = [nome, quantidade, preco_custo, preco_venda, estoque_minimo];
-		const resultado = await pool.query(query, valores);
-		
-		return res.status(201).json(resultado.rows[0]);
-	} catch (err) {
-		console.error("Erro ao cadastrar produto:", err);
-		return res.status(500).json({ erro: "Erro ao inserir produto no banco." });
-	}
-});
+    console.log("BODY:", req.body);
 
-// Endpoint: Registrar movimentações (Entradas e Saídas)
-app.post("/api/movimentacoes", async (req, res) => {
-	const { id_produto, tipo, quantidade } = req.body;
+    const {
+        nome,
+        quantidade,
+        preco_custo,
+        preco_venda,
+        estoque_minimo
+    } = req.body;
 
-	try {
-		const prodRes = await pool.query("SELECT quantidade, nome FROM produtos WHERE id_produto = $1", [id_produto]);
-		if (prodRes.rows.length === 0) {
-			return res.status(404).json({ erro: "Produto não encontrado." });
-		}
+    console.log({
+        nome,
+        quantidade,
+        preco_custo,
+        preco_venda,
+        estoque_minimo
+    });
 
-		const produtoAtual = prodRes.rows[0];
-		let novaQuantidade = parseInt(produtoAtual.quantidade);
+    try {
+        const resultado = await pool.query(
+            `INSERT INTO produtos
+            (nome, quantidade, preco_custo, preco_venda, estoque_minimo)
+            VALUES ($1,$2,$3,$4,$5)
+            RETURNING *`,
+            [nome, quantidade, preco_custo, preco_venda, estoque_minimo]
+        );
 
-		if (tipo === "ENTRADA") {
-			novaQuantidade += parseInt(quantidade);
-		} else if (tipo === "SAIDA") {
-			if (novaQuantidade < parseInt(quantidade)) {
-				return res.status(400).json({ 
-					erro: `Quantidade insuficiente! O produto '${produtoAtual.nome}' possui apenas ${novaQuantidade} unidades em estoque.` 
-				});
-			}
-			novaQuantidade -= parseInt(quantidade);
-		} else {
-			return res.status(400).json({ erro: "Tipo de operação inválido." });
-		}
+        res.status(201).json(resultado.rows[0]);
 
-		await pool.query("UPDATE produtos SET quantidade = $1 WHERE id_produto = $2", [novaQuantidade, id_produto]);
-
-		await pool.query(
-			"INSERT INTO movimentacoes (id_produto, tipo, quantidade, data_operacao) VALUES ($1, $2, $3, NOW())",
-			[id_produto, tipo, quantidade]
-		);
-
-		return res.status(200).json({ mensagem: "Movimentação registrada e estoque atualizado!", novaQuantidade });
-	} catch (err) {
-		console.error("Erro ao processar movimentação:", err);
-		return res.status(500).json({ erro: "Erro ao processar movimentação no banco de dados." });
-	}
-});
-
-// Rotas para servir a aplicação baseada no arquivo encontrado de forma dinâmica
-app.get("/", (req, res) => {
-	res.sendFile(caminhoIndexFinal);
-});
-
-app.get("*", (req, res) => {
-	res.sendFile(caminhoIndexFinal);
-});
-
-// Configuração da porta dinâmica do Render
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-	console.log(`Servidor de controle de estoque rodando na porta ${PORT}`);
+    } catch (err) {
+        console.error("ERRO POSTGRES:", err);
+        res.status(500).json({
+            erro: err.message
+        });
+    }
 });
