@@ -236,8 +236,17 @@
       <div class="card">
         <div class="card-title">Lista de Produtos</div>
         <table class="items-table">
-          <thead><tr><th>ID</th><th>Nome</th><th>Categoria</th><th>Fornecedor</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Preco Custo</th><th>Preco Venda</th></tr></thead>
-          <tbody id="tbody-produtos"><tr><td colspan="8" class="empty-msg">Carregando...</td></tr></tbody>
+          <thead><tr><th>ID</th><th>Nome</th><th>Categoria</th><th>Fornecedor</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Preco Custo</th><th>Preco Venda</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-produtos"><tr><td colspan="9" class="empty-msg">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+
+      <!-- GERENCIAR FORNECEDORES -->
+      <div class="card">
+        <div class="card-title">Gerenciar Fornecedores</div>
+        <table class="items-table">
+          <thead><tr><th>ID</th><th>Nome</th><th>Contato</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-fornecedores"><tr><td colspan="4" class="empty-msg">Carregando...</td></tr></tbody>
         </table>
       </div>
     </section>
@@ -390,8 +399,8 @@
         <div class="card">
           <div class="card-title">Posicao Atual do Estoque</div>
           <table class="items-table">
-            <thead><tr><th>ID</th><th>Produto</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Valor em Estoque</th><th>Situacao</th></tr></thead>
-            <tbody id="tbody-rel-estoque"><tr><td colspan="6" class="empty-msg">Carregando...</td></tr></tbody>
+            <thead><tr><th>ID</th><th>Produto</th><th>Qtd Atual</th><th>Est. Minimo</th><th>Valor em Estoque</th><th>Situacao</th><th>Ações</th></tr></thead>
+            <tbody id="tbody-rel-estoque"><tr><td colspan="7" class="empty-msg">Carregando...</td></tr></tbody>
           </table>
           <div class="total-row">
             <span class="total-label">Valor Total em Estoque</span>
@@ -589,7 +598,7 @@
           <input type="text" id="forn-nome" placeholder="Ex: Distribuidora X" required style="width:100%;">
         </div>
         <div class="form-group" style="margin-bottom:1rem;">
-          <label>Contato (opcional)</label>
+          <label>Contato</label>
           <input type="text" id="forn-contato" placeholder="Ex: Joao - (12) 99999-0000" style="width:100%;">
         </div>
         <div id="forn-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
@@ -813,7 +822,7 @@
       else if (situacaoFiltro === 'ok') lista = lista.filter(p => parseInt(p.quantidade) > parseInt(p.estoque_minimo));
 
       if (!lista.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhum produto encontrado.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-msg">Nenhum produto encontrado.</td></tr>';
         document.getElementById('rel-valor-total').textContent = 'R$ 0,00';
         return;
       }
@@ -829,7 +838,7 @@
         if (qtd <= 0) { badge = '<span class="badge badge-critico">Zerado</span>'; cor = 'color:var(--danger)'; }
         else if (qtd <= min) { badge = '<span class="badge badge-baixo">Baixo</span>'; cor = 'color:#a16207'; }
         else { badge = '<span class="badge badge-ok">Regular</span>'; }
-        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td style="' + cor + '">' + qtd + '</td><td>' + min + '</td><td>R$ ' + valEstoque.toFixed(2) + '</td><td>' + badge + '</td></tr>';
+        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td style="' + cor + '">' + qtd + '</td><td>' + min + '</td><td>R$ ' + valEstoque.toFixed(2) + '</td><td>' + badge + '</td><td><button class="btn-delete" onclick="deletarProduto(' + p.id_produto + ')">&#128465;</button></td></tr>';
       }).join('');
       document.getElementById('rel-valor-total').textContent = 'R$ ' + valorTotal.toFixed(2);
     }
@@ -1025,6 +1034,7 @@
       renderTabelaProdutos();
       preencherSelects();
       atualizarDashboard();
+      carregarFornecedoresCard();
     }
 
     /* ===== FORNECEDOR MODAL ===== */
@@ -1077,12 +1087,49 @@
     function renderTabelaProdutos() {
       const tbody = document.getElementById('tbody-produtos');
       if (!produtosCache.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="empty-msg">Nenhum produto cadastrado.</td></tr>'; return;
+        tbody.innerHTML = '<tr><td colspan="9" class="empty-msg">Nenhum produto cadastrado.</td></tr>'; return;
       }
       tbody.innerHTML = produtosCache.map(p => {
         const baixo = parseInt(p.quantidade) <= parseInt(p.estoque_minimo);
-        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td>' + (p.categoria || '-') + '</td><td>' + (p.fornecedor_nome || '-') + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td></tr>';
+        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td>' + (p.categoria || '-') + '</td><td>' + (p.fornecedor_nome || '-') + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td><td><button class="btn-delete" onclick="deletarProduto(' + p.id_produto + ')">&#128465;</button></td></tr>';
       }).join('');
+    }
+
+    async function deletarProduto(id) {
+      if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+      try {
+        const res = await fetch(API_URL + '/produtos/' + id, { method: 'DELETE' });
+        if (res.ok) { carregarProdutos(); }
+        else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
+      } catch(e) { alert('Erro de conexao ao excluir produto.'); }
+    }
+
+    async function deletarFornecedor(id) {
+      if (!confirm('Tem certeza que deseja excluir este fornecedor?')) return;
+      try {
+        const res = await fetch(API_URL + '/fornecedores/' + id, { method: 'DELETE' });
+        if (res.ok) { carregarFornecedoresCard(); carregarFornecedoresSelects(); }
+        else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
+      } catch(e) { alert('Erro de conexao ao excluir fornecedor.'); }
+    }
+
+    async function carregarFornecedoresCard() {
+      const tbody = document.getElementById('tbody-fornecedores');
+      if (!tbody) return;
+      try {
+        const res = await fetch(API_URL + '/fornecedores');
+        if (!res.ok) { tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Erro ao carregar fornecedores.</td></tr>'; return; }
+        const lista = await res.json();
+        if (!Array.isArray(lista) || !lista.length) {
+          tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Nenhum fornecedor cadastrado.</td></tr>'; return;
+        }
+        tbody.innerHTML = lista.map(function(f) {
+          return '<tr><td>' + f.id_fornecedor + '</td><td>' + f.nome + '</td><td>' + (f.contato || '-') + '</td><td><button class="btn-delete" onclick="deletarFornecedor(' + f.id_fornecedor + ')">&#128465;</button></td></tr>';
+        }).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Erro de conexao.</td></tr>';
+        console.error('Erro ao carregar fornecedores:', e);
+      }
     }
 
     function preencherSelects() {
