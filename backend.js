@@ -149,7 +149,7 @@ const pool = new Pool({
         await pool.query(`CREATE TABLE IF NOT EXISTS fornecedores (
             id_fornecedor SERIAL PRIMARY KEY,
             nome VARCHAR(100) NOT NULL,
-            contato VARCHAR(50) DEFAULT ''
+            contato VARCHAR(50) DEFAULT NULL
         )`);
         console.log("Tabela fornecedores criada");
     } catch (err) {
@@ -159,10 +159,22 @@ const pool = new Pool({
 
 (async () => {
     try {
+        await pool.query(`CREATE TABLE IF NOT EXISTS categorias (
+            id_categoria SERIAL PRIMARY KEY,
+            nome VARCHAR(80) NOT NULL UNIQUE
+        )`);
+        console.log("Tabela categorias criada");
+    } catch (err) {
+        console.error("Erro categorias:", err.message);
+    }
+})();
+
+(async () => {
+    try {
         await pool.query(`CREATE TABLE IF NOT EXISTS clientes (
             id_cliente SERIAL PRIMARY KEY,
             nome VARCHAR(150) NOT NULL,
-            contato VARCHAR(50) DEFAULT ''
+            contato VARCHAR(50) DEFAULT NULL
         )`);
         console.log("Tabela clientes criada");
     } catch (err) {
@@ -175,7 +187,7 @@ const pool = new Pool({
         await pool.query(`CREATE TABLE IF NOT EXISTS produtos (
             id_produto SERIAL PRIMARY KEY,
             nome VARCHAR(150) NOT NULL,
-            categoria VARCHAR(80) DEFAULT '',
+            categoria VARCHAR(80) DEFAULT NULL,
             preco_custo NUMERIC(10,2) NOT NULL DEFAULT 0,
             preco_venda NUMERIC(10,2) NOT NULL DEFAULT 0,
             quantidade INTEGER NOT NULL DEFAULT 0,
@@ -671,6 +683,47 @@ app.delete("/api/clientes/:id", async (req, res) => {
         return res.json({ mensagem: "Cliente removido" });
     } catch (err) {
         console.error("ERRO DELETE CLIENTE:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+/* ==========================================================
+   CATEGORIAS
+========================================================== */
+
+app.get("/api/categorias", async (req, res) => {
+    try {
+        const result = await pool.query("SELECT * FROM categorias ORDER BY nome ASC");
+        return res.json(result.rows);
+    } catch (err) {
+        console.error("ERRO GET CATEGORIAS:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.post("/api/categorias", async (req, res) => {
+    try {
+        const { nome } = req.body;
+        const result = await pool.query(
+            "INSERT INTO categorias (nome) VALUES ($1) RETURNING *",
+            [nome]
+        );
+        return res.status(201).json(result.rows[0]);
+    } catch (err) {
+        if (err.code === "23505") {
+            return res.status(400).json({ erro: "Essa categoria ja existe." });
+        }
+        console.error("ERRO INSERT CATEGORIA:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.delete("/api/categorias/:id", async (req, res) => {
+    try {
+        await pool.query("DELETE FROM categorias WHERE id_categoria = $1", [req.params.id]);
+        return res.json({ mensagem: "Categoria removida" });
+    } catch (err) {
+        console.error("ERRO DELETE CATEGORIA:", err.message);
         return res.status(500).json({ erro: err.message });
     }
 });
