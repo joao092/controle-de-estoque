@@ -106,24 +106,24 @@ const pool = new Pool({
     try {
         const client = await pool.connect();
 
-        console.log("✅ PostgreSQL conectado com sucesso");
+        console.log("PostgreSQL conectado com sucesso");
 
         client.release();
     } catch (err) {
-        console.error("❌ ERRO AO CONECTAR NO POSTGRESQL");
+        console.error("ERRO AO CONECTAR NO POSTGRESQL");
         console.error(err);
     }
 })();
 
 /* ==========================================================
-   CRIAR TABELA AUTOMATICAMENTE
+   CRIAR TABELAS AUTOMATICAMENTE
 ========================================================== */
 
 (async () => {
     try {
         await pool.query(`
             CREATE TABLE IF NOT EXISTS produtos (
-                id SERIAL PRIMARY KEY,
+                id_produto SERIAL PRIMARY KEY,
                 nome VARCHAR(255) NOT NULL,
                 quantidade INTEGER DEFAULT 0,
                 preco_custo NUMERIC(10,2) DEFAULT 0,
@@ -132,9 +132,28 @@ const pool = new Pool({
             )
         `);
 
-        console.log("✅ Tabela produtos pronta");
+        console.log("Tabela produtos pronta");
     } catch (err) {
-        console.error("❌ Erro ao criar tabela produtos");
+        console.error("Erro ao criar tabela produtos");
+        console.error(err);
+    }
+})();
+
+(async () => {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS movimentacoes (
+                id_movimentacao SERIAL PRIMARY KEY,
+                id_produto INTEGER NOT NULL REFERENCES produtos(id_produto),
+                tipo VARCHAR(20) NOT NULL CHECK (tipo IN ('ENTRADA', 'SAIDA')),
+                quantidade INTEGER NOT NULL,
+                data_movimentacao TIMESTAMP DEFAULT NOW()
+            )
+        `);
+
+        console.log("Tabela movimentacoes pronta");
+    } catch (err) {
+        console.error("Erro ao criar tabela movimentacoes");
         console.error(err);
     }
 })();
@@ -218,11 +237,74 @@ app.post("/api/produtos", async (req, res) => {
 });
 
 /* ==========================================================
+   LISTAR MOVIMENTACOES
+========================================================== */
+
+app.get("/api/movimentacoes", async (req, res) => {
+    try {
+        const resultado = await pool.query(
+            "SELECT * FROM movimentacoes ORDER BY data_movimentacao DESC"
+        );
+
+        return res.status(200).json(resultado.rows);
+    } catch (err) {
+        console.error("ERRO GET MOVIMENTACOES:");
+        console.error(err);
+
+        return res.status(500).json({
+            erro: err.message
+        });
+    }
+});
+
+/* ==========================================================
+   CRIAR MOVIMENTACAO
+========================================================== */
+
+app.post("/api/movimentacoes", async (req, res) => {
+    try {
+        const { id_produto, tipo, quantidade } = req.body;
+
+        console.log("MOVIMENTACAO RECEBIDA:", req.body);
+
+        const resultado = await pool.query(
+            `
+            INSERT INTO movimentacoes (id_produto, tipo, quantidade)
+            VALUES ($1, $2, $3)
+            RETURNING *
+            `,
+            [id_produto, tipo, quantidade]
+        );
+
+        if (tipo === 'ENTRADA') {
+            await pool.query(
+                "UPDATE produtos SET quantidade = quantidade + $1 WHERE id_produto = $2",
+                [quantidade, id_produto]
+            );
+        } else if (tipo === 'SAIDA') {
+            await pool.query(
+                "UPDATE produtos SET quantidade = quantidade - $1 WHERE id_produto = $2",
+                [quantidade, id_produto]
+            );
+        }
+
+        return res.status(201).json(resultado.rows[0]);
+    } catch (err) {
+        console.error("ERRO INSERT MOVIMENTACAO:");
+        console.error(err);
+
+        return res.status(500).json({
+            erro: err.message
+        });
+    }
+});
+
+/* ==========================================================
    PORTA RENDER
 ========================================================== */
 
 const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    console.log(`Servidor rodando na porta ${PORT}`);
 });
