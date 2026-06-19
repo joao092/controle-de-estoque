@@ -434,7 +434,8 @@ app.get("/api/sessao", async (req, res) => {
 
         if (result.rows.length === 0) return res.json({ autenticado: false });
 
-        return res.json({ autenticado: true, usuario: result.rows[0] });
+        const usuario = result.rows[0];
+        return res.json({ autenticado: true, usuario: { id: usuario.id_usuario, nome: usuario.nome, nivel_acesso: usuario.nivel_acesso } });
     } catch (err) {
         console.error("ERRO SESSAO:", err.message);
         return res.status(500).json({ erro: err.message });
