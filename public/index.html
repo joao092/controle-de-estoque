@@ -739,50 +739,81 @@
     }
 
     /* ===== CONFIGURACOES ===== */
-    function carregarConfiguracoes() {
-      const cfg = JSON.parse(localStorage.getItem('cfg_sistema') || '{}');
-      if (cfg.nomeEmpresa) document.getElementById('cfg-nome-empresa').value = cfg.nomeEmpresa;
-      if (cfg.cnpj) document.getElementById('cfg-cnpj').value = cfg.cnpj;
-      if (cfg.email) document.getElementById('cfg-email').value = cfg.email;
-      if (cfg.telefone) document.getElementById('cfg-telefone').value = cfg.telefone;
-      if (cfg.endereco) document.getElementById('cfg-endereco').value = cfg.endereco;
-      if (cfg.alertasAtivos !== undefined) document.getElementById('cfg-alertas').checked = cfg.alertasAtivos;
-      if (cfg.bloqueio !== undefined) document.getElementById('cfg-bloqueio').checked = cfg.bloqueio;
-      if (cfg.autoRefresh !== undefined) document.getElementById('cfg-auto-refresh').checked = cfg.autoRefresh;
-      if (cfg.categorias) {
-        const cont = document.getElementById('cfg-categorias');
-        cont.innerHTML = cfg.categorias.map(c => '<span class="tag">' + c + ' <button onclick="removerCategoria(this)">&#215;</button></span>').join('');
-      }
-      if (cfg.fornecedores) {
-        const cont = document.getElementById('cfg-fornecedores');
-        cont.innerHTML = cfg.fornecedores.map(f => '<span class="tag">' + f + ' <button onclick="removerFornecedor(this)">&#215;</button></span>').join('');
-        atualizarSelectFornecedores(cfg.fornecedores);
+    async function carregarConfiguracoes() {
+      try {
+        const res = await fetch(API_URL + '/configuracoes');
+        const cfg = await res.json();
+        const dados = cfg.dados || {};
+        const pref = cfg.preferencias || {};
+
+        if (dados.nomeEmpresa) document.getElementById('cfg-nome-empresa').value = dados.nomeEmpresa;
+        if (dados.cnpj) document.getElementById('cfg-cnpj').value = dados.cnpj;
+        if (dados.email) document.getElementById('cfg-email').value = dados.email;
+        if (dados.telefone) document.getElementById('cfg-telefone').value = dados.telefone;
+        if (dados.endereco) document.getElementById('cfg-endereco').value = dados.endereco;
+        if (pref.alertasAtivos !== undefined) document.getElementById('cfg-alertas').checked = pref.alertasAtivos;
+        if (pref.bloqueio !== undefined) document.getElementById('cfg-bloqueio').checked = pref.bloqueio;
+        if (pref.autoRefresh !== undefined) document.getElementById('cfg-auto-refresh').checked = pref.autoRefresh;
+        if (pref.categorias) {
+          const cont = document.getElementById('cfg-categorias');
+          cont.innerHTML = pref.categorias.map(c => '<span class="tag">' + c + ' <button onclick="removerCategoria(this)">&#215;</button></span>').join('');
+        }
+        if (pref.fornecedores) {
+          const cont = document.getElementById('cfg-fornecedores');
+          cont.innerHTML = pref.fornecedores.map(f => '<span class="tag">' + f + ' <button onclick="removerFornecedor(this)">&#215;</button></span>').join('');
+          atualizarSelectFornecedores(pref.fornecedores);
+        }
+      } catch(e) {
+        console.error('Erro ao carregar configuracoes:', e);
       }
     }
 
-    function salvarConfiguracoes() {
-      const cfg = JSON.parse(localStorage.getItem('cfg_sistema') || '{}');
-      cfg.nomeEmpresa = document.getElementById('cfg-nome-empresa').value;
-      cfg.cnpj = document.getElementById('cfg-cnpj').value;
-      cfg.email = document.getElementById('cfg-email').value;
-      cfg.telefone = document.getElementById('cfg-telefone').value;
-      cfg.endereco = document.getElementById('cfg-endereco').value;
-      localStorage.setItem('cfg_sistema', JSON.stringify(cfg));
-      alert('Dados da empresa salvos com sucesso!');
+    async function salvarConfiguracoes() {
+      const dados = {
+        nomeEmpresa: document.getElementById('cfg-nome-empresa').value,
+        cnpj: document.getElementById('cfg-cnpj').value,
+        email: document.getElementById('cfg-email').value,
+        telefone: document.getElementById('cfg-telefone').value,
+        endereco: document.getElementById('cfg-endereco').value
+      };
+      try {
+        const res = await fetch(API_URL + '/configuracoes', {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ dados })
+        });
+        if (res.ok) alert('Dados da empresa salvos com sucesso!');
+        else alert('Erro ao salvar dados da empresa.');
+      } catch(e) {
+        alert('Erro ao conectar com o servidor.');
+      }
     }
 
-    function salvarPreferencias() {
-      const cfg = JSON.parse(localStorage.getItem('cfg_sistema') || '{}');
-      cfg.alertasAtivos = document.getElementById('cfg-alertas').checked;
-      cfg.bloqueio = document.getElementById('cfg-bloqueio').checked;
-      cfg.autoRefresh = document.getElementById('cfg-auto-refresh').checked;
+    async function salvarPreferencias() {
       const cats = Array.from(document.getElementById('cfg-categorias').querySelectorAll('.tag')).map(el => el.textContent.replace('×','').trim());
       const forns = Array.from(document.getElementById('cfg-fornecedores').querySelectorAll('.tag')).map(el => el.textContent.replace('×','').trim());
-      cfg.categorias = cats;
-      cfg.fornecedores = forns;
-      localStorage.setItem('cfg_sistema', JSON.stringify(cfg));
-      atualizarSelectFornecedores(forns);
-      alert('Preferencias salvas!');
+      const preferencias = {
+        alertasAtivos: document.getElementById('cfg-alertas').checked,
+        bloqueio: document.getElementById('cfg-bloqueio').checked,
+        autoRefresh: document.getElementById('cfg-auto-refresh').checked,
+        categorias: cats,
+        fornecedores: forns
+      };
+      try {
+        const res = await fetch(API_URL + '/configuracoes', {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ preferencias })
+        });
+        if (res.ok) {
+          atualizarSelectFornecedores(forns);
+          alert('Preferencias salvas!');
+        } else {
+          alert('Erro ao salvar preferencias.');
+        }
+      } catch(e) {
+        alert('Erro ao conectar com o servidor.');
+      }
     }
 
     function adicionarCategoria() {
@@ -973,8 +1004,6 @@
       var mesInicio = hoje.substring(0,7) + '-01';
       document.getElementById('rel-data-ini').value = mesInicio;
       document.getElementById('rel-data-fim').value = hoje;
-      // Carregar config salva
-      var cfg = JSON.parse(localStorage.getItem('cfg_sistema') || '{}');
       carregarProdutos();
     };
   </script>
