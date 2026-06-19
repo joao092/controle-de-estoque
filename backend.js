@@ -487,16 +487,25 @@ app.post("/api/produtos", async (req, res) => {
 });
 
 app.delete("/api/produtos/:id", async (req, res) => {
+    const client = await pool.connect();
     try {
         const { id } = req.params;
-        await pool.query("DELETE FROM produtos WHERE id_produto = $1", [id]);
-        return res.json({ mensagem: "Produto removido" });
-    } catch (err) {
-        console.error("ERRO DELETE PRODUTO:", err.message);
-        if (err.code === "23503") {
-            return res.status(400).json({ erro: "Nao e possivel excluir este produto pois existem movimentacoes (entradas/saidas) vinculadas a ele. Exclua os registros relacionados primeiro." });
+        await client.query("BEGIN");
+        await client.query("DELETE FROM entradas WHERE id_produto = $1", [id]);
+        await client.query("DELETE FROM saidas WHERE id_produto = $1", [id]);
+        await client.query("DELETE FROM movimentacoes WHERE id_produto = $1", [id]);
+        const result = await client.query("DELETE FROM produtos WHERE id_produto = $1", [id]);
+        await client.query("COMMIT");
+        if (result.rowCount === 0) {
+            return res.status(404).json({ erro: "Produto nao encontrado." });
         }
+        return res.json({ mensagem: "Produto e registros relacionados removidos com sucesso." });
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.error("ERRO DELETE PRODUTO:", err.message);
         return res.status(500).json({ erro: err.message });
+    } finally {
+        client.release();
     }
 });
 
