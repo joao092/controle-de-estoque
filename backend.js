@@ -17,7 +17,7 @@ async function resetSequence(tabela, coluna) {
 }
 
 /* ==========================================================
-   LOCALIZAR INDEX.HTML AUTOMATICAMENTE
+   LOCALIZAR INDEX.HTML
 ========================================================== */
 
 function buscarArquivoRecursivo(diretorioAlvo, nomeArquivo) {
@@ -261,6 +261,30 @@ const pool = new Pool({
 })();
 
 /* ==========================================================
+   TABELA MOVIMENTACOES
+========================================================== */
+
+(async () => {
+    try {
+        await pool.query(`CREATE TABLE IF NOT EXISTS movimentacoes (
+            id_movimentacao SERIAL PRIMARY KEY,
+            tipo VARCHAR(10) NOT NULL CHECK (tipo IN ('ENTRADA', 'SAIDA')),
+            id_produto INTEGER NOT NULL,
+            id_usuario INTEGER DEFAULT NULL,
+            quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+            valor_unitario NUMERIC(10,2) NOT NULL DEFAULT 0,
+            data_movimentacao DATE NOT NULL DEFAULT CURRENT_DATE,
+            observacao TEXT DEFAULT NULL,
+            motivo VARCHAR(50) DEFAULT NULL,
+            cliente VARCHAR(150) DEFAULT NULL
+        )`);
+        console.log("Tabela movimentacoes criada");
+    } catch (err) {
+        console.error("Erro movimentacoes:", err.message);
+    }
+})();
+
+/* ==========================================================
    TRIGGERS
 ========================================================== */
 
@@ -272,6 +296,8 @@ const pool = new Pool({
             BEGIN
                 UPDATE produtos SET quantidade = quantidade + NEW.quantidade
                 WHERE id_produto = NEW.id_produto;
+                INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao)
+                VALUES ('ENTRADA', NEW.id_produto, NEW.id_usuario, NEW.quantidade, NEW.valor_unitario, NEW.data_entrada, NEW.observacao);
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql
@@ -302,6 +328,8 @@ const pool = new Pool({
             BEGIN
                 UPDATE produtos SET quantidade = quantidade - NEW.quantidade
                 WHERE id_produto = NEW.id_produto;
+                INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao, motivo, cliente)
+                VALUES ('SAIDA', NEW.id_produto, NEW.id_usuario, NEW.quantidade, 0, NEW.data_saida, NEW.observacao, NEW.motivo, NEW.cliente);
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql
@@ -351,6 +379,26 @@ const pool = new Pool({
         console.log("Views criadas");
     } catch (err) {
         console.error("Erro views:", err.message);
+    }
+})();
+
+(async () => {
+    try {
+        await pool.query(`
+            INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao)
+            SELECT 'ENTRADA', id_produto, id_usuario, quantidade, valor_unitario, data_entrada, observacao
+            FROM entradas e
+            WHERE NOT EXISTS (SELECT 1 FROM movimentacoes m WHERE m.id_movimentacao = e.id_entrada AND m.tipo = 'ENTRADA')
+        `);
+        await pool.query(`
+            INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao, motivo, cliente)
+            SELECT 'SAIDA', id_produto, id_usuario, quantidade, 0, data_saida, observacao, motivo, cliente
+            FROM saidas s
+            WHERE NOT EXISTS (SELECT 1 FROM movimentacoes m WHERE m.id_movimentacao = s.id_saida AND m.tipo = 'SAIDA')
+        `);
+        console.log("Movimentacoes existentes migradas");
+    } catch (err) {
+        console.error("Erro migracao movimentacoes:", err.message);
     }
 })();
 
@@ -905,26 +953,15 @@ app.get("/api/relatorios/valor-estoque", async (req, res) => {
 
 app.get("/api/relatorios/movimentacoes", async (req, res) => {
     try {
-        const entradas = await pool.query(`
-            SELECT e.id_entrada AS id, 'ENTRADA' AS tipo, e.id_produto, p.nome AS produto_nome,
-                   e.quantidade, e.valor_unitario, e.data_entrada AS data_mov, e.id_usuario, u.nome AS usuario_nome
-            FROM entradas e
-            JOIN produtos p ON p.id_produto = e.id_produto
-            JOIN usuarios u ON u.id_usuario = e.id_usuario
+        const result = await pool.query(`
+            SELECT m.id_movimentacao AS id, m.tipo, m.id_produto, p.nome AS produto_nome,
+                   m.quantidade, m.valor_unitario, m.data_movimentacao AS data_mov, m.id_usuario, u.nome AS usuario_nome
+            FROM movimentacoes m
+            LEFT JOIN produtos p ON p.id_produto = m.id_produto
+            LEFT JOIN usuarios u ON u.id_usuario = m.id_usuario
+            ORDER BY m.data_movimentacao DESC, m.id_movimentacao DESC
         `);
-
-        const saidas = await pool.query(`
-            SELECT s.id_saida AS id, 'SAIDA' AS tipo, s.id_produto, p.nome AS produto_nome,
-                   s.quantidade, 0 AS valor_unitario, s.data_saida AS data_mov, s.id_usuario, u.nome AS usuario_nome
-            FROM saidas s
-            JOIN produtos p ON p.id_produto = s.id_produto
-            JOIN usuarios u ON u.id_usuario = s.id_usuario
-        `);
-
-        const movs = [...entradas.rows, ...saidas.rows];
-        movs.sort((a, b) => new Date(b.data_mov) - new Date(a.data_mov));
-
-        return res.json(movs);
+        return res.json(result.rows);
     } catch (err) {
         console.error("ERRO MOVIMENTACOES:", err.message);
         return res.status(500).json({ erro: err.message });
