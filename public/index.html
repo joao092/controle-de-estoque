@@ -1007,7 +1007,7 @@
       }
 
       let valorTotal = 0;
-      tbody.innerHTML = lista.map(function(p) {
+      tbody.innerHTML = lista.map(function(p, i) {
         const qtd = parseInt(p.quantidade);
         const min = parseInt(p.estoque_minimo);
         const custo = parseFloat(p.preco_custo);
@@ -1017,7 +1017,7 @@
         if (qtd <= 0) { badge = '<span class="badge badge-critico">Zerado</span>'; cor = 'color:var(--danger)'; }
         else if (qtd <= min) { badge = '<span class="badge badge-baixo">Baixo</span>'; cor = 'color:#a16207'; }
         else { badge = '<span class="badge badge-ok">Regular</span>'; }
-        return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td style="' + cor + '">' + qtd + '</td><td>' + min + '</td><td>R$ ' + valEstoque.toFixed(2) + '</td><td>' + badge + '</td><td><button class="btn-delete" onclick="deletarProduto(' + p.id_produto + ')">&#128465;</button></td></tr>';
+        return '<tr><td>' + (i+1) + '</td><td>' + p.nome + '</td><td style="' + cor + '">' + qtd + '</td><td>' + min + '</td><td>R$ ' + valEstoque.toFixed(2) + '</td><td>' + badge + '</td><td><button class="btn-delete" onclick="deletarProduto(' + p.id_produto + ')">&#128465;</button></td></tr>';
       }).join('');
       document.getElementById('rel-valor-total').textContent = 'R$ ' + valorTotal.toFixed(2);
       aplicarPermissoes();
