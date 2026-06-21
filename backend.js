@@ -388,6 +388,10 @@ const pool = new Pool({
                 ["Administrador", senhaHash, "Administrador"]
             );
             console.log("Usuario padrao criado: Administrador / admin123");
+        } else {
+            await pool.query(
+                `UPDATE usuarios SET nivel_acesso = 'Administrador' WHERE nome = 'Administrador' AND (nivel_acesso IS NULL OR nivel_acesso = 'usuario')`
+            );
         }
     } catch (err) {
         console.error("Erro usuario padrao:", err.message);
