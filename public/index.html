@@ -773,6 +773,15 @@
     let autoRefreshInterval = null;
     let intentSection = null;
 
+    function apiFetch(url, options = {}) {
+      const token = localStorage.getItem('token');
+      if (token) {
+        options.headers = options.headers || {};
+        options.headers['Authorization'] = token;
+      }
+      return fetch(url, options);
+    }
+
     function getBloqueioAtivo() {
       const el = document.getElementById('cfg-bloqueio');
       return el ? el.checked : configPrefs.bloqueio !== false;
@@ -1142,7 +1151,7 @@
         endereco: document.getElementById('cfg-endereco').value
       };
       try {
-        const res = await fetch(API_URL + '/configuracoes', {
+        const res = await apiFetch(API_URL + '/configuracoes', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ dados })
@@ -1161,7 +1170,7 @@
         autoRefresh: document.getElementById('cfg-auto-refresh').checked
       };
       try {
-        const res = await fetch(API_URL + '/configuracoes', {
+        const res = await apiFetch(API_URL + '/configuracoes', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ preferencias })
@@ -1217,7 +1226,7 @@
       const erroEl = document.getElementById('cli-erro');
       erroEl.style.display = 'none';
       try {
-        const res = await fetch(API_URL + '/clientes' + (editId ? '/' + editId : ''), {
+        const res = await apiFetch(API_URL + '/clientes' + (editId ? '/' + editId : ''), {
           method: editId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ nome, contato })
         });
@@ -1234,7 +1243,7 @@
     async function deletarCliente(id) {
       if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
       try {
-        const res = await fetch(API_URL + '/clientes/' + id, { method: 'DELETE' });
+        const res = await apiFetch(API_URL + '/clientes/' + id, { method: 'DELETE' });
         if (res.ok) { carregarClientes(); carregarClientesSelect(); }
         else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
       } catch(e) { alert('Erro de conexao ao excluir cliente.'); }
@@ -1327,7 +1336,7 @@
       erroEl.style.display = 'none';
       if (!nome) { erroEl.textContent = 'Informe o nome da categoria.'; erroEl.style.display = 'block'; return; }
       try {
-        const res = await fetch(API_URL + '/categorias' + (editId ? '/' + editId : ''), {
+        const res = await apiFetch(API_URL + '/categorias' + (editId ? '/' + editId : ''), {
           method: editId ? 'PUT' : 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ nome })
@@ -1345,7 +1354,7 @@
     async function deletarCategoria(id) {
       if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
       try {
-        const res = await fetch(API_URL + '/categorias/' + id, { method: 'DELETE' });
+        const res = await apiFetch(API_URL + '/categorias/' + id, { method: 'DELETE' });
         if (res.ok) { carregarCategoriasCard(); carregarCategoriasSelect(); }
         else { const err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
       } catch(e) { alert('Erro de conexao ao excluir categoria.'); }
@@ -1420,7 +1429,7 @@
       const erroEl = document.getElementById('forn-erro');
       erroEl.style.display = 'none';
       try {
-        const res = await fetch(API_URL + '/fornecedores' + (editId ? '/' + editId : ''), {
+        const res = await apiFetch(API_URL + '/fornecedores' + (editId ? '/' + editId : ''), {
           method: editId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ nome, contato })
         });
@@ -1467,7 +1476,7 @@
     async function deletarProduto(id) {
       if (!confirm('Tem certeza que deseja excluir este produto?')) return;
       try {
-        const res = await fetch(API_URL + '/produtos/' + id, { method: 'DELETE' });
+        const res = await apiFetch(API_URL + '/produtos/' + id, { method: 'DELETE' });
         if (res.ok) { carregarProdutos(); }
         else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
       } catch(e) { alert('Erro de conexao ao excluir produto.'); }
@@ -1476,7 +1485,7 @@
     async function deletarFornecedor(id) {
       if (!confirm('Tem certeza que deseja excluir este fornecedor?')) return;
       try {
-        const res = await fetch(API_URL + '/fornecedores/' + id, { method: 'DELETE' });
+        const res = await apiFetch(API_URL + '/fornecedores/' + id, { method: 'DELETE' });
         if (res.ok) { carregarFornecedoresCard(); carregarFornecedoresSelects(); }
         else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
       } catch(e) { alert('Erro de conexao ao excluir fornecedor.'); }
@@ -1577,7 +1586,7 @@
       var observacao = document.getElementById('ent-obs').value;
       for (var i = 0; i < itensEntrada.length; i++) {
         var item = itensEntrada[i];
-        var res = await fetch(API_URL + '/entradas', {
+        var res = await apiFetch(API_URL + '/entradas', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({
             id_produto: parseInt(item.id),
@@ -1650,7 +1659,7 @@
       var observacao = document.getElementById('sai-obs').value;
       for (var i = 0; i < itensSaida.length; i++) {
         var item = itensSaida[i];
-        var res = await fetch(API_URL + '/saidas', {
+        var res = await apiFetch(API_URL + '/saidas', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({
             id_produto: parseInt(item.id),
@@ -1696,7 +1705,7 @@
         preco_venda: parseFloat(document.getElementById('prod-venda').value),
         estoque_minimo: parseInt(document.getElementById('prod-min').value)
       };
-      const res = await fetch(API_URL + '/produtos' + (editId ? '/' + editId : ''), {
+      const res = await apiFetch(API_URL + '/produtos' + (editId ? '/' + editId : ''), {
         method: editId ? 'PUT' : 'POST',
         headers: {'Content-Type':'application/json'},
         body: JSON.stringify(dados)
@@ -1735,7 +1744,7 @@
     async function deletarEntrada(id) {
       if (!confirm('Tem certeza que deseja excluir esta entrada?')) return;
       try {
-        const res = await fetch(API_URL + '/entradas/' + id, { method: 'DELETE' });
+        const res = await apiFetch(API_URL + '/entradas/' + id, { method: 'DELETE' });
         if (res.ok) { carregarHistoricoEntradas(); carregarProdutos(); }
         else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
       } catch(e) { alert('Erro de conexao.'); }
@@ -1773,7 +1782,7 @@
         observacao: document.getElementById('edit-ent-obs').value
       };
       try {
-        const res = await fetch(API_URL + '/entradas/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const res = await apiFetch(API_URL + '/entradas/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
         if (!res.ok) { var err = await res.json(); document.getElementById('edit-ent-erro').textContent = err.erro || 'Erro'; document.getElementById('edit-ent-erro').style.display = 'block'; return; }
         fecharModalEditarEntrada(); carregarHistoricoEntradas(); carregarProdutos();
       } catch(e) { alert('Erro de conexao.'); }
@@ -1802,7 +1811,7 @@
     async function deletarSaida(id) {
       if (!confirm('Tem certeza que deseja excluir esta saida?')) return;
       try {
-        const res = await fetch(API_URL + '/saidas/' + id, { method: 'DELETE' });
+        const res = await apiFetch(API_URL + '/saidas/' + id, { method: 'DELETE' });
         if (res.ok) { carregarHistoricoSaidas(); carregarProdutos(); }
         else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
       } catch(e) { alert('Erro de conexao.'); }
@@ -1842,7 +1851,7 @@
         observacao: document.getElementById('edit-sai-obs').value
       };
       try {
-        const res = await fetch(API_URL + '/saidas/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const res = await apiFetch(API_URL + '/saidas/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
         if (!res.ok) { var err = await res.json(); document.getElementById('edit-sai-erro').textContent = err.erro || 'Erro'; document.getElementById('edit-sai-erro').style.display = 'block'; return; }
         fecharModalEditarSaida(); carregarHistoricoSaidas(); carregarProdutos();
       } catch(e) { alert('Erro de conexao.'); }
