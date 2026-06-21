@@ -216,7 +216,7 @@
     <section id="produtos" class="section">
       <div class="breadcrumb">Home / Produtos</div>
       <div class="page-title">Produtos</div>
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Cadastrar Novo Produto</div>
         <form id="form-produto" onsubmit="cadastrarProduto(event)">
           <input type="hidden" id="prod-edit-id" value="">
@@ -243,7 +243,7 @@
       </div>
 
       <!-- GERENCIAR FORNECEDORES -->
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Gerenciar Fornecedores</div>
         <table class="items-table">
           <thead><tr><th>ID</th><th>Nome</th><th>Contato</th><th>Ações</th></tr></thead>
@@ -252,7 +252,7 @@
       </div>
 
       <!-- GERENCIAR CLIENTES -->
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Gerenciar Clientes</div>
         <table class="items-table">
           <thead><tr><th>ID</th><th>Nome</th><th>Contato</th><th>Ações</th></tr></thead>
@@ -261,7 +261,7 @@
       </div>
 
       <!-- GERENCIAR CATEGORIAS -->
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Gerenciar Categorias</div>
         <table class="items-table">
           <thead><tr><th>ID</th><th>Nome</th><th>Ações</th></tr></thead>
@@ -274,7 +274,7 @@
     <section id="entradas" class="section active">
       <div class="breadcrumb"><a href="#">Home</a> <span>/</span> <a href="#">Entradas</a> <span>/</span> Nova Entrada</div>
       <div class="page-title">Entrada de Produtos</div>
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Dados da Entrada</div>
         <div class="form-row col-3">
           <div class="form-group">
@@ -287,7 +287,7 @@
           <div class="form-group"><label>Observacao (opcional)</label><input type="text" id="ent-obs" placeholder="Digite uma observacao"></div>
         </div>
       </div>
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Itens da Entrada</div>
         <div class="form-row col-3" style="align-items:flex-end;">
           <div class="form-group"><label>Produto</label><select id="ent-produto"><option value="">Selecione o produto</option></select></div>
@@ -323,7 +323,7 @@
     <section id="saidas" class="section">
       <div class="breadcrumb"><a href="#">Home</a> <span>/</span> <a href="#">Saidas</a> <span>/</span> Nova Saida</div>
       <div class="page-title">Saida de Produtos</div>
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Dados da Saida</div>
         <div class="form-row col-3">
           <div class="form-group">
@@ -340,7 +340,7 @@
           <div class="form-group"><label>Observacao (opcional)</label><input type="text" id="sai-obs" placeholder="Digite uma observacao"></div>
         </div>
       </div>
-      <div class="card">
+      <div class="card" data-admin-only>
         <div class="card-title">Itens da Saida</div>
         <div class="form-row col-3" style="align-items:flex-end;">
           <div class="form-group"><label>Produto</label><select id="sai-produto"><option value="">Selecione o produto</option></select></div>
@@ -753,6 +753,14 @@
     .modal-overlay { position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:200;display:flex;align-items:center;justify-content:center; }
     .modal { background:var(--surface);border-radius:10px;width:90%;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,0.15); }
     .modal-header { display:flex;justify-content:space-between;align-items:center;padding:1rem 1.25rem;border-bottom:1px solid var(--border); }
+    .modo-visualizacao .btn-delete,
+    .modo-visualizacao .btn-add,
+    .modo-visualizacao #configuracoes .btn-primary,
+    .modo-visualizacao #entradas .btn-row,
+    .modo-visualizacao #saidas .btn-row,
+    .modo-visualizacao .form-group button.btn-add,
+    .modo-visualizacao .tag-input-row,
+    .modo-visualizacao [data-admin-only] { display: none !important; }
   </style>
 
   <script>
@@ -776,46 +784,10 @@
 
     function aplicarPermissoes() {
       const admin = isAdmin();
-
-      document.querySelectorAll('.btn-delete').forEach(el => el.style.display = admin ? '' : 'none');
-
-      document.querySelectorAll('.btn-add').forEach(el => el.style.display = admin ? '' : 'none');
-
-      document.querySelectorAll('#configuracoes .btn-primary').forEach(el => el.style.display = admin ? '' : 'none');
-
-      document.querySelectorAll('.card').forEach(card => {
-        const title = card.querySelector('.card-title');
-        if (!title) return;
-        const t = title.textContent;
-        if (
-          t.includes('Cadastrar Novo') ||
-          t.includes('Gerenciar Fornecedores') ||
-          t.includes('Gerenciar Clientes') ||
-          t.includes('Gerenciar Categorias') ||
-          t.includes('Dados da Entrada') ||
-          t.includes('Itens da Entrada') ||
-          t.includes('Dados da Saida') ||
-          t.includes('Itens da Saida')
-        ) {
-          card.style.display = admin ? '' : 'none';
-        }
-      });
-
-      document.querySelectorAll('#entradas .btn-row, #saidas .btn-row').forEach(el => el.style.display = admin ? '' : 'none');
-
-      document.querySelectorAll('.form-group button.btn-add').forEach(el => el.style.display = admin ? '' : 'none');
-
-      document.querySelectorAll('.tag-input-row').forEach(el => el.style.display = admin ? '' : 'none');
-
-      document.querySelectorAll('input, select, textarea').forEach(el => {
-        if (admin) {
-          el.disabled = false;
-        } else {
-          if (el.closest('#form-login')) return;
-          if (el.closest('.filter-bar')) return;
-          el.disabled = true;
-        }
-      });
+      document.body.classList.toggle('modo-visualizacao', !admin);
+      if (admin) {
+        document.querySelectorAll('input, select, textarea').forEach(el => el.disabled = false);
+      }
     }
 
     /* ===== LOGIN ===== */
