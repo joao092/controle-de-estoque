@@ -517,6 +517,22 @@ app.post("/api/produtos", async (req, res) => {
     }
 });
 
+app.put("/api/produtos/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, categoria, preco_custo, preco_venda, quantidade, estoque_minimo, id_fornecedor } = req.body;
+        const result = await pool.query(
+            `UPDATE produtos SET nome=$1, categoria=$2, preco_custo=$3, preco_venda=$4, quantidade=$5, estoque_minimo=$6, id_fornecedor=$7 WHERE id_produto=$8 RETURNING *`,
+            [nome, categoria||'', preco_custo, preco_venda, quantidade, estoque_minimo, id_fornecedor||null, id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ erro: "Produto nao encontrado." });
+        return res.json(result.rows[0]);
+    } catch (err) {
+        console.error("ERRO PUT PRODUTO:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
 app.delete("/api/produtos/:id", async (req, res) => {
     const client = await pool.connect();
     try {
@@ -578,8 +594,34 @@ app.post("/api/entradas", async (req, res) => {
     }
 });
 
+app.put("/api/entradas/:id", async (req, res) => {
+    try {
+        const { id_produto, id_fornecedor, quantidade, valor_unitario, data_entrada, observacao } = req.body;
+        const result = await pool.query(
+            `UPDATE entradas SET id_produto=$1, id_fornecedor=$2, quantidade=$3, valor_unitario=$4, data_entrada=$5, observacao=$6 WHERE id_entrada=$7 RETURNING *`,
+            [id_produto, id_fornecedor||null, quantidade, valor_unitario||0, data_entrada, observacao||null, req.params.id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ erro: "Entrada nao encontrada." });
+        return res.json(result.rows[0]);
+    } catch (err) {
+        console.error("ERRO PUT ENTRADA:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.delete("/api/entradas/:id", async (req, res) => {
+    try {
+        await pool.query("DELETE FROM entradas WHERE id_entrada = $1", [req.params.id]);
+        await resetSequence("entradas", "id_entrada");
+        return res.json({ mensagem: "Entrada removida" });
+    } catch (err) {
+        console.error("ERRO DELETE ENTRADA:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
 /* ==========================================================
-   SAIDAS
+    SAIDAS
 ========================================================== */
 
 app.get("/api/saidas", async (req, res) => {
@@ -624,8 +666,34 @@ app.post("/api/saidas", async (req, res) => {
     }
 });
 
+app.put("/api/saidas/:id", async (req, res) => {
+    try {
+        const { id_produto, quantidade, tipo, motivo, cliente, data_saida, observacao } = req.body;
+        const result = await pool.query(
+            `UPDATE saidas SET id_produto=$1, quantidade=$2, tipo=$3, motivo=$4, cliente=$5, data_saida=$6, observacao=$7 WHERE id_saida=$8 RETURNING *`,
+            [id_produto, quantidade, tipo||null, motivo||null, cliente||null, data_saida, observacao||null, req.params.id]
+        );
+        if (result.rowCount === 0) return res.status(404).json({ erro: "Saida nao encontrada." });
+        return res.json(result.rows[0]);
+    } catch (err) {
+        console.error("ERRO PUT SAIDA:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.delete("/api/saidas/:id", async (req, res) => {
+    try {
+        await pool.query("DELETE FROM saidas WHERE id_saida = $1", [req.params.id]);
+        await resetSequence("saidas", "id_saida");
+        return res.json({ mensagem: "Saida removida" });
+    } catch (err) {
+        console.error("ERRO DELETE SAIDA:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
 /* ==========================================================
-   FORNECEDORES
+    FORNECEDORES
 ========================================================== */
 
 app.get("/api/fornecedores", async (req, res) => {
@@ -648,6 +716,18 @@ app.post("/api/fornecedores", async (req, res) => {
         return res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error("ERRO INSERT FORNECEDOR:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.put("/api/fornecedores/:id", async (req, res) => {
+    try {
+        const { nome, contato } = req.body;
+        const result = await pool.query("UPDATE fornecedores SET nome=$1, contato=$2 WHERE id_fornecedor=$3 RETURNING *", [nome, contato||'', req.params.id]);
+        if (result.rowCount === 0) return res.status(404).json({ erro: "Fornecedor nao encontrado." });
+        return res.json(result.rows[0]);
+    } catch (err) {
+        console.error("ERRO PUT FORNECEDOR:", err.message);
         return res.status(500).json({ erro: err.message });
     }
 });
@@ -694,6 +774,18 @@ app.post("/api/clientes", async (req, res) => {
     }
 });
 
+app.put("/api/clientes/:id", async (req, res) => {
+    try {
+        const { nome, contato } = req.body;
+        const result = await pool.query("UPDATE clientes SET nome=$1, contato=$2 WHERE id_cliente=$3 RETURNING *", [nome, contato||'', req.params.id]);
+        if (result.rowCount === 0) return res.status(404).json({ erro: "Cliente nao encontrado." });
+        return res.json(result.rows[0]);
+    } catch (err) {
+        console.error("ERRO PUT CLIENTE:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
 app.delete("/api/clientes/:id", async (req, res) => {
     try {
         await pool.query("DELETE FROM clientes WHERE id_cliente = $1", [req.params.id]);
@@ -732,6 +824,19 @@ app.post("/api/categorias", async (req, res) => {
             return res.status(400).json({ erro: "Essa categoria ja existe." });
         }
         console.error("ERRO INSERT CATEGORIA:", err.message);
+        return res.status(500).json({ erro: err.message });
+    }
+});
+
+app.put("/api/categorias/:id", async (req, res) => {
+    try {
+        const { nome } = req.body;
+        if (!nome) return res.status(400).json({ erro: "Nome da categoria é obrigatorio." });
+        const result = await pool.query("UPDATE categorias SET nome=$1 WHERE id_categoria=$2 RETURNING *", [nome, req.params.id]);
+        if (result.rowCount === 0) return res.status(404).json({ erro: "Categoria nao encontrada." });
+        return res.json(result.rows[0]);
+    } catch (err) {
+        console.error("ERRO PUT CATEGORIA:", err.message);
         return res.status(500).json({ erro: err.message });
     }
 });
