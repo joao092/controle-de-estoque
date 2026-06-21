@@ -760,7 +760,7 @@
     .modo-visualizacao #saidas .btn-row,
     .modo-visualizacao .form-group button.btn-add,
     .modo-visualizacao .tag-input-row,
-    .modo-visualizacao [data-admin-only] { display: none !important; }
+    .modo-visualizacao [data-admin-only] { display: none; }
   </style>
 
   <script>
@@ -783,10 +783,11 @@
     }
 
     function aplicarPermissoes() {
-      const admin = isAdmin();
-      document.body.classList.toggle('modo-visualizacao', !admin);
-      if (admin) {
-        document.querySelectorAll('input, select, textarea').forEach(el => el.disabled = false);
+      if (isAdmin()) {
+        document.body.classList.remove('modo-visualizacao');
+        document.querySelectorAll('input, select, textarea, button').forEach(el => el.disabled = false);
+      } else {
+        document.body.classList.add('modo-visualizacao');
       }
     }
 
