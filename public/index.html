@@ -1435,6 +1435,7 @@
           }
         }
       }
+      var tipo = document.getElementById('sai-tipo').value;
       var dataSaida = document.getElementById('sai-data').value;
       var cliente = document.getElementById('sai-cliente').value;
       var observacao = document.getElementById('sai-obs').value;
@@ -1446,6 +1447,7 @@
             id_produto: parseInt(item.id),
             id_usuario: usuarioLogado.id,
             quantidade: item.qtd,
+            tipo: tipo || null,
             motivo: item.motivo || null,
             cliente: cliente || null,
             data_saida: dataSaida,
