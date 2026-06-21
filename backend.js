@@ -238,11 +238,19 @@ const pool = new Pool({
             id_produto INTEGER NOT NULL REFERENCES produtos(id_produto) ON DELETE RESTRICT,
             id_usuario INTEGER NOT NULL REFERENCES usuarios(id_usuario) ON DELETE RESTRICT,
             quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+            tipo VARCHAR(20) DEFAULT NULL,
             motivo VARCHAR(50) DEFAULT NULL,
             cliente VARCHAR(150) DEFAULT NULL,
             data_saida DATE NOT NULL DEFAULT CURRENT_DATE,
             observacao TEXT DEFAULT NULL
         )`);
+        const colsSaida = await pool.query(
+            `SELECT column_name FROM information_schema.columns WHERE table_name = 'saidas'`
+        );
+        const existentesSaida = colsSaida.rows.map(r => r.column_name);
+        if (!existentesSaida.includes('tipo')) {
+            await pool.query(`ALTER TABLE saidas ADD COLUMN tipo VARCHAR(20) DEFAULT NULL`);
+        }
         console.log("Tabela saidas criada");
     } catch (err) {
         console.error("Erro saidas:", err.message);
@@ -584,7 +592,7 @@ app.get("/api/saidas", async (req, res) => {
 
 app.post("/api/saidas", async (req, res) => {
     try {
-        const { id_produto, id_usuario, quantidade, motivo, cliente, data_saida, observacao } = req.body;
+        const { id_produto, id_usuario, quantidade, tipo, motivo, cliente, data_saida, observacao } = req.body;
 
         const cfgRes = await pool.query("SELECT preferencias FROM configuracoes WHERE id = 1");
         const preferencias = (cfgRes.rows[0] && cfgRes.rows[0].preferencias) || {};
@@ -597,9 +605,9 @@ app.post("/api/saidas", async (req, res) => {
         }
 
         const result = await pool.query(
-            `INSERT INTO saidas (id_produto, id_usuario, quantidade, motivo, cliente, data_saida, observacao)
-             VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
-            [id_produto, id_usuario, quantidade, motivo||null, cliente||null, data_saida, observacao||null]
+            `INSERT INTO saidas (id_produto, id_usuario, quantidade, tipo, motivo, cliente, data_saida, observacao)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+            [id_produto, id_usuario, quantidade, tipo||null, motivo||null, cliente||null, data_saida, observacao||null]
         );
         return res.status(201).json(result.rows[0]);
     } catch (err) {
