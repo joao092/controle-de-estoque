@@ -296,8 +296,6 @@ const pool = new Pool({
             BEGIN
                 UPDATE produtos SET quantidade = quantidade + NEW.quantidade
                 WHERE id_produto = NEW.id_produto;
-                INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao)
-                VALUES ('ENTRADA', NEW.id_produto, NEW.id_usuario, NEW.quantidade, NEW.valor_unitario, NEW.data_entrada, NEW.observacao);
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql
@@ -328,8 +326,6 @@ const pool = new Pool({
             BEGIN
                 UPDATE produtos SET quantidade = quantidade - NEW.quantidade
                 WHERE id_produto = NEW.id_produto;
-                INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao, motivo, cliente)
-                VALUES ('SAIDA', NEW.id_produto, NEW.id_usuario, NEW.quantidade, 0, NEW.data_saida, NEW.observacao, NEW.motivo, NEW.cliente);
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql
@@ -382,26 +378,6 @@ const pool = new Pool({
     }
 })();
 
-(async () => {
-    try {
-        await pool.query(`
-            INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao)
-            SELECT 'ENTRADA', id_produto, id_usuario, quantidade, valor_unitario, data_entrada, observacao
-            FROM entradas e
-            WHERE NOT EXISTS (SELECT 1 FROM movimentacoes m WHERE m.id_movimentacao = e.id_entrada AND m.tipo = 'ENTRADA')
-        `);
-        await pool.query(`
-            INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao, motivo, cliente)
-            SELECT 'SAIDA', id_produto, id_usuario, quantidade, 0, data_saida, observacao, motivo, cliente
-            FROM saidas s
-            WHERE NOT EXISTS (SELECT 1 FROM movimentacoes m WHERE m.id_movimentacao = s.id_saida AND m.tipo = 'SAIDA')
-        `);
-        console.log("Movimentacoes existentes migradas");
-    } catch (err) {
-        console.error("Erro migracao movimentacoes:", err.message);
-    }
-})();
-
 /* ==========================================================
    INDICES
 ========================================================== */
@@ -417,6 +393,31 @@ const pool = new Pool({
         console.log("Indices criados");
     } catch (err) {
         console.error("Erro indices:", err.message);
+    }
+})();
+
+/* ==========================================================
+   MIGRAR DADOS EXISTENTES PARA MOVIMENTACOES
+========================================================== */
+
+(async () => {
+    try {
+        const countMov = await pool.query("SELECT COUNT(*) FROM movimentacoes");
+        if (parseInt(countMov.rows[0].count) === 0) {
+            await pool.query(`
+                INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao)
+                SELECT 'ENTRADA', e.id_produto, e.id_usuario, e.quantidade, e.valor_unitario, e.data_entrada, e.observacao
+                FROM entradas e
+            `);
+            await pool.query(`
+                INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao, motivo, cliente)
+                SELECT 'SAIDA', s.id_produto, s.id_usuario, s.quantidade, 0, s.data_saida, s.observacao, s.motivo, s.cliente
+                FROM saidas s
+            `);
+            console.log("Dados existentes migrados para movimentacoes");
+        }
+    } catch (err) {
+        console.error("Erro migracao movimentacoes:", err.message);
     }
 })();
 
@@ -613,9 +614,9 @@ app.delete("/api/produtos/:id", requerAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         await client.query("BEGIN");
+        await client.query("DELETE FROM movimentacoes WHERE id_produto = $1", [id]);
         await client.query("DELETE FROM entradas WHERE id_produto = $1", [id]);
         await client.query("DELETE FROM saidas WHERE id_produto = $1", [id]);
-        await client.query("DELETE FROM movimentacoes WHERE id_produto = $1", [id]);
         const result = await client.query("DELETE FROM produtos WHERE id_produto = $1", [id]);
         await client.query("COMMIT");
         if (result.rowCount === 0) {
@@ -661,6 +662,11 @@ app.post("/api/entradas", requerAdmin, async (req, res) => {
             `INSERT INTO entradas (id_produto, id_fornecedor, id_usuario, quantidade, valor_unitario, data_entrada, observacao)
              VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
             [id_produto, id_fornecedor||null, id_usuario, quantidade, valor_unitario||0, data_entrada, observacao||null]
+        );
+        await pool.query(
+            `INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao)
+             VALUES ('ENTRADA', $1, $2, $3, $4, $5, $6)`,
+            [id_produto, id_usuario, quantidade, valor_unitario||0, data_entrada, observacao||null]
         );
         return res.status(201).json(result.rows[0]);
     } catch (err) {
@@ -733,6 +739,11 @@ app.post("/api/saidas", requerAdmin, async (req, res) => {
             `INSERT INTO saidas (id_produto, id_usuario, quantidade, tipo, motivo, cliente, data_saida, observacao)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
             [id_produto, id_usuario, quantidade, tipo||null, motivo||null, cliente||null, data_saida, observacao||null]
+        );
+        await pool.query(
+            `INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao, motivo, cliente)
+             VALUES ('SAIDA', $1, $2, $3, 0, $4, $5, $6, $7)`,
+            [id_produto, id_usuario, quantidade, data_saida, observacao||null, motivo||null, cliente||null]
         );
         return res.status(201).json(result.rows[0]);
     } catch (err) {
