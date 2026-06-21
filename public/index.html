@@ -219,6 +219,7 @@
       <div class="card">
         <div class="card-title">Cadastrar Novo Produto</div>
         <form id="form-produto" onsubmit="cadastrarProduto(event)">
+          <input type="hidden" id="prod-edit-id" value="">
           <div class="form-row col-4">
             <div class="form-group"><label>Nome do Produto</label><input type="text" id="prod-nome" placeholder="Ex: Queijo Minas" required></div>
             <div class="form-group"><label>Categoria</label><div style="display:flex;gap:4px;"><select id="prod-categoria" style="flex:1;"><option value="">Selecione a categoria</option></select><button type="button" class="btn-add" style="height:36px;padding:0 10px;font-size:16px;line-height:1;" onclick="abrirModalCategoria()" title="Nova categoria">+</button></div></div>
@@ -309,6 +310,13 @@
         <button class="btn btn-outline" onclick="limparEntrada()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarEntrada()">Salvar Entrada</button>
       </div>
+      <div class="card">
+        <div class="card-title">Historico de Entradas</div>
+        <table class="items-table">
+          <thead><tr><th>#</th><th>Produto</th><th>Quantidade</th><th>Valor Unit.</th><th>Data</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-hist-entradas"><tr><td colspan="6" class="empty-msg">Carregando...</td></tr></tbody>
+        </table>
+      </div>
     </section>
 
     <!-- SAIDAS -->
@@ -357,6 +365,13 @@
       <div class="btn-row">
         <button class="btn btn-outline" onclick="limparSaida()">Cancelar</button>
         <button class="btn btn-primary" onclick="salvarSaida()">Salvar Saida</button>
+      </div>
+      <div class="card">
+        <div class="card-title">Historico de Saidas</div>
+        <table class="items-table">
+          <thead><tr><th>#</th><th>Produto</th><th>Quantidade</th><th>Tipo</th><th>Data</th><th>Ações</th></tr></thead>
+          <tbody id="tbody-hist-saidas"><tr><td colspan="6" class="empty-msg">Carregando...</td></tr></tbody>
+        </table>
       </div>
     </section>
 
@@ -584,6 +599,7 @@
         <button onclick="fecharModalFornecedor()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
       </div>
       <form id="form-fornecedor" onsubmit="salvarFornecedor(event)" style="padding:1.25rem;">
+        <input type="hidden" id="forn-edit-id" value="">
         <div class="form-group" style="margin-bottom:0.75rem;">
           <label>Nome do Fornecedor</label>
           <input type="text" id="forn-nome" placeholder="Ex: Distribuidora X" required style="width:100%;">
@@ -606,6 +622,7 @@
         <button onclick="fecharModalCategoria()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
       </div>
       <form id="form-categoria" onsubmit="salvarCategoria(event)" style="padding:1.25rem;">
+        <input type="hidden" id="cat-edit-id" value="">
         <div class="form-group" style="margin-bottom:1rem;">
           <label>Nome da Categoria</label>
           <input type="text" id="cat-nome" placeholder="Ex: Alimentos" required style="width:100%;">
@@ -624,6 +641,7 @@
         <button onclick="fecharModalCliente()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
       </div>
       <form id="form-cliente" onsubmit="salvarCliente(event)" style="padding:1.25rem;">
+        <input type="hidden" id="cli-edit-id" value="">
         <div class="form-group" style="margin-bottom:0.75rem;">
           <label>Nome do Cliente</label>
           <input type="text" id="cli-nome" placeholder="Ex: Joao Silva" required style="width:100%;">
@@ -634,6 +652,80 @@
         </div>
         <div id="cli-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
         <button type="submit" class="btn btn-primary" style="width:100%;">Salvar Cliente</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR ENTRADA -->
+  <div id="modal-editar-entrada" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header">
+        <span style="font-size:16px;font-weight:600;">Editar Entrada</span>
+        <button onclick="fecharModalEditarEntrada()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-editar-entrada" onsubmit="salvarEditarEntrada(event)" style="padding:1.25rem;">
+        <input type="hidden" id="edit-ent-id" value="">
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Produto</label>
+          <select id="edit-ent-produto" style="width:100%;"></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Quantidade</label>
+          <input type="number" id="edit-ent-qtd" min="1" required style="width:100%;">
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Valor Unitario (R$)</label>
+          <input type="number" id="edit-ent-valor" step="0.01" min="0" required style="width:100%;">
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Data</label>
+          <input type="date" id="edit-ent-data" required style="width:100%;">
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Observacao</label>
+          <input type="text" id="edit-ent-obs" style="width:100%;">
+        </div>
+        <div id="edit-ent-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Salvar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL EDITAR SAIDA -->
+  <div id="modal-editar-saida" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width:400px;">
+      <div class="modal-header">
+        <span style="font-size:16px;font-weight:600;">Editar Saida</span>
+        <button onclick="fecharModalEditarSaida()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted);">&times;</button>
+      </div>
+      <form id="form-editar-saida" onsubmit="salvarEditarSaida(event)" style="padding:1.25rem;">
+        <input type="hidden" id="edit-sai-id" value="">
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Produto</label>
+          <select id="edit-sai-produto" style="width:100%;"></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Quantidade</label>
+          <input type="number" id="edit-sai-qtd" min="1" required style="width:100%;">
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Tipo</label>
+          <select id="edit-sai-tipo" style="width:100%;"><option value="">Selecione</option><option>Venda</option><option>Baixa</option><option>Transferencia</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Motivo</label>
+          <select id="edit-sai-motivo" style="width:100%;"><option value="">Selecione</option><option>Venda</option><option>Perda</option><option>Devolucao</option></select>
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Data</label>
+          <input type="date" id="edit-sai-data" required style="width:100%;">
+        </div>
+        <div class="form-group" style="margin-bottom:0.75rem;">
+          <label>Observacao</label>
+          <input type="text" id="edit-sai-obs" style="width:100%;">
+        </div>
+        <div id="edit-sai-erro" style="color:var(--danger);font-size:13px;margin-bottom:0.75rem;display:none;"></div>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Salvar</button>
       </form>
     </div>
   </div>
@@ -1053,20 +1145,38 @@
     /* ===== CLIENTES ===== */
     function abrirModalCliente() {
       document.getElementById('form-cliente').reset();
+      document.getElementById('cli-edit-id').value = '';
       document.getElementById('cli-erro').style.display = 'none';
       document.getElementById('modal-cliente').style.display = 'flex';
     }
     function fecharModalCliente() { document.getElementById('modal-cliente').style.display = 'none'; }
 
+    async function editarCliente(id) {
+      try {
+        const res = await fetch(API_URL + '/clientes');
+        const lista = await res.json();
+        const c = lista.find(function(x) { return x.id_cliente == id; });
+        if (!c) return;
+        document.getElementById('cli-edit-id').value = c.id_cliente;
+        document.getElementById('cli-nome').value = c.nome;
+        document.getElementById('cli-contato').value = c.contato || '';
+        document.getElementById('cli-erro').style.display = 'none';
+        document.getElementById('modal-cliente').style.display = 'flex';
+      } catch(e) {
+        alert('Erro ao carregar dados do cliente.');
+      }
+    }
+
     async function salvarCliente(e) {
       e.preventDefault();
+      const editId = document.getElementById('cli-edit-id').value;
       const nome = document.getElementById('cli-nome').value;
       const contato = document.getElementById('cli-contato').value;
       const erroEl = document.getElementById('cli-erro');
       erroEl.style.display = 'none';
       try {
-        const res = await fetch(API_URL + '/clientes', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
+        const res = await fetch(API_URL + '/clientes' + (editId ? '/' + editId : ''), {
+          method: editId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ nome, contato })
         });
         if (!res.ok) { var err = await res.json(); erroEl.textContent = err.erro || 'Erro ao salvar'; erroEl.style.display = 'block'; return; }
@@ -1099,7 +1209,7 @@
           tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Nenhum cliente cadastrado.</td></tr>'; return;
         }
         tbody.innerHTML = lista.map(function(c, i) {
-          return '<tr><td>' + (i+1) + '</td><td>' + c.nome + '</td><td>' + (c.contato || '-') + '</td><td><button class="btn-delete" onclick="deletarCliente(' + c.id_cliente + ')">&#128465;</button></td></tr>';
+          return '<tr><td>' + (i+1) + '</td><td>' + c.nome + '</td><td>' + (c.contato || '-') + '</td><td><button class="btn-add" onclick="editarCliente(' + c.id_cliente + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="deletarCliente(' + c.id_cliente + ')">&#128465;</button></td></tr>';
         }).join('');
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Erro de conexao.</td></tr>';
@@ -1138,25 +1248,44 @@
       carregarClientesSelect();
       carregarCategoriasSelect();
       carregarCategoriasCard();
+      carregarHistoricoEntradas();
+      carregarHistoricoSaidas();
     }
 
     /* ===== CATEGORIA MODAL ===== */
     function abrirModalCategoria() {
       document.getElementById('form-categoria').reset();
+      document.getElementById('cat-edit-id').value = '';
       document.getElementById('cat-erro').style.display = 'none';
       document.getElementById('modal-categoria').style.display = 'flex';
     }
     function fecharModalCategoria() { document.getElementById('modal-categoria').style.display = 'none'; }
 
+    async function editarCategoria(id) {
+      try {
+        const res = await fetch(API_URL + '/categorias');
+        const lista = await res.json();
+        const c = lista.find(function(x) { return x.id_categoria == id; });
+        if (!c) return;
+        document.getElementById('cat-edit-id').value = c.id_categoria;
+        document.getElementById('cat-nome').value = c.nome;
+        document.getElementById('cat-erro').style.display = 'none';
+        document.getElementById('modal-categoria').style.display = 'flex';
+      } catch(e) {
+        alert('Erro ao carregar dados da categoria.');
+      }
+    }
+
     async function salvarCategoria(e) {
       e.preventDefault();
+      const editId = document.getElementById('cat-edit-id').value;
       const nome = document.getElementById('cat-nome').value.trim();
       const erroEl = document.getElementById('cat-erro');
       erroEl.style.display = 'none';
       if (!nome) { erroEl.textContent = 'Informe o nome da categoria.'; erroEl.style.display = 'block'; return; }
       try {
-        const res = await fetch(API_URL + '/categorias', {
-          method: 'POST',
+        const res = await fetch(API_URL + '/categorias' + (editId ? '/' + editId : ''), {
+          method: editId ? 'PUT' : 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({ nome })
         });
@@ -1207,7 +1336,7 @@
           tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Nenhuma categoria cadastrada.</td></tr>'; return;
         }
         tbody.innerHTML = lista.map(function(c, i) {
-          return '<tr><td>' + (i+1) + '</td><td>' + c.nome + '</td><td><button class="btn-delete" onclick="deletarCategoria(' + c.id_categoria + ')">&#128465;</button></td></tr>';
+          return '<tr><td>' + (i+1) + '</td><td>' + c.nome + '</td><td><button class="btn-add" onclick="editarCategoria(' + c.id_categoria + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="deletarCategoria(' + c.id_categoria + ')">&#128465;</button></td></tr>';
         }).join('');
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="3" class="empty-msg">Erro de conexao.</td></tr>';
@@ -1218,25 +1347,44 @@
     /* ===== FORNECEDOR MODAL ===== */
     function abrirModalFornecedor() {
       document.getElementById('form-fornecedor').reset();
+      document.getElementById('forn-edit-id').value = '';
       document.getElementById('forn-erro').style.display = 'none';
       document.getElementById('modal-fornecedor').style.display = 'flex';
     }
     function fecharModalFornecedor() { document.getElementById('modal-fornecedor').style.display = 'none'; }
 
+    async function editarFornecedor(id) {
+      try {
+        const res = await fetch(API_URL + '/fornecedores');
+        const lista = await res.json();
+        const f = lista.find(function(x) { return x.id_fornecedor == id; });
+        if (!f) return;
+        document.getElementById('forn-edit-id').value = f.id_fornecedor;
+        document.getElementById('forn-nome').value = f.nome;
+        document.getElementById('forn-contato').value = f.contato || '';
+        document.getElementById('forn-erro').style.display = 'none';
+        document.getElementById('modal-fornecedor').style.display = 'flex';
+      } catch(e) {
+        alert('Erro ao carregar dados do fornecedor.');
+      }
+    }
+
     async function salvarFornecedor(e) {
       e.preventDefault();
+      const editId = document.getElementById('forn-edit-id').value;
       const nome = document.getElementById('forn-nome').value;
       const contato = document.getElementById('forn-contato').value;
       const erroEl = document.getElementById('forn-erro');
       erroEl.style.display = 'none';
       try {
-        const res = await fetch(API_URL + '/fornecedores', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
+        const res = await fetch(API_URL + '/fornecedores' + (editId ? '/' + editId : ''), {
+          method: editId ? 'PUT' : 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({ nome, contato })
         });
         if (!res.ok) { var err = await res.json(); erroEl.textContent = err.erro || 'Erro ao salvar'; erroEl.style.display = 'block'; return; }
         fecharModalFornecedor();
         carregarFornecedoresSelects();
+        carregarFornecedoresCard();
       } catch(e) {
         erroEl.textContent = 'Erro de conexao';
         erroEl.style.display = 'block';
@@ -1269,7 +1417,7 @@
       }
       tbody.innerHTML = produtosCache.map(function(p, i) {
         const baixo = parseInt(p.quantidade) <= parseInt(p.estoque_minimo);
-        return '<tr><td>' + (i+1) + '</td><td>' + p.nome + '</td><td>' + (p.categoria || '-') + '</td><td>' + (p.fornecedor_nome || '-') + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td><td><button class="btn-delete" onclick="deletarProduto(' + p.id_produto + ')">&#128465;</button></td></tr>';
+        return '<tr><td>' + (i+1) + '</td><td>' + p.nome + '</td><td>' + (p.categoria || '-') + '</td><td>' + (p.fornecedor_nome || '-') + '</td><td style="color:' + (baixo ? 'var(--danger)' : 'var(--text)') + '">' + p.quantidade + '</td><td>' + p.estoque_minimo + '</td><td>R$ ' + parseFloat(p.preco_custo).toFixed(2) + '</td><td>R$ ' + parseFloat(p.preco_venda).toFixed(2) + '</td><td><button class="btn-add" onclick="editarProduto(' + p.id_produto + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="deletarProduto(' + p.id_produto + ')">&#128465;</button></td></tr>';
       }).join('');
     }
 
@@ -1302,7 +1450,7 @@
           tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Nenhum fornecedor cadastrado.</td></tr>'; return;
         }
         tbody.innerHTML = lista.map(function(f, i) {
-          return '<tr><td>' + (i+1) + '</td><td>' + f.nome + '</td><td>' + (f.contato || '-') + '</td><td><button class="btn-delete" onclick="deletarFornecedor(' + f.id_fornecedor + ')">&#128465;</button></td></tr>';
+          return '<tr><td>' + (i+1) + '</td><td>' + f.nome + '</td><td>' + (f.contato || '-') + '</td><td><button class="btn-add" onclick="editarFornecedor(' + f.id_fornecedor + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="deletarFornecedor(' + f.id_fornecedor + ')">&#128465;</button></td></tr>';
         }).join('');
       } catch(e) {
         tbody.innerHTML = '<tr><td colspan="4" class="empty-msg">Erro de conexao.</td></tr>';
@@ -1460,8 +1608,24 @@
       alert('Saida salva com sucesso!'); limparSaida(); carregarProdutos();
     }
 
+    async function editarProduto(id) {
+      const p = produtosCache.find(function(x) { return x.id_produto == id; });
+      if (!p) return;
+      document.getElementById('prod-edit-id').value = p.id_produto;
+      document.getElementById('prod-nome').value = p.nome;
+      document.getElementById('prod-categoria').value = p.categoria || '';
+      document.getElementById('prod-fornecedor').value = p.id_fornecedor || '';
+      document.getElementById('prod-qtd').value = p.quantidade;
+      document.getElementById('prod-custo').value = p.preco_custo;
+      document.getElementById('prod-venda').value = p.preco_venda;
+      document.getElementById('prod-min').value = p.estoque_minimo;
+      document.querySelector('#form-produto .btn-row .btn-primary').textContent = 'Atualizar Produto';
+      document.getElementById('produtos').scrollIntoView({behavior:'smooth'});
+    }
+
     async function cadastrarProduto(e) {
       e.preventDefault();
+      const editId = document.getElementById('prod-edit-id').value;
       const dados = {
         nome: document.getElementById('prod-nome').value,
         categoria: document.getElementById('prod-categoria').value,
@@ -1471,9 +1635,156 @@
         preco_venda: parseFloat(document.getElementById('prod-venda').value),
         estoque_minimo: parseInt(document.getElementById('prod-min').value)
       };
-      const res = await fetch(API_URL + '/produtos', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(dados)});
-      if (res.ok) { alert('Produto cadastrado!'); document.getElementById('form-produto').reset(); carregarProdutos(); }
-      else alert('Erro ao cadastrar produto.');
+      const res = await fetch(API_URL + '/produtos' + (editId ? '/' + editId : ''), {
+        method: editId ? 'PUT' : 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(dados)
+      });
+      if (res.ok) {
+        alert(editId ? 'Produto atualizado!' : 'Produto cadastrado!');
+        document.getElementById('form-produto').reset();
+        document.getElementById('prod-edit-id').value = '';
+        document.querySelector('#form-produto .btn-row .btn-primary').textContent = 'Cadastrar Produto';
+        carregarProdutos();
+      } else {
+        alert('Erro ao ' + (editId ? 'atualizar' : 'cadastrar') + ' produto.');
+      }
+    }
+
+    /* ===== HISTORICO ENTRADAS ===== */
+    async function carregarHistoricoEntradas() {
+      const tbody = document.getElementById('tbody-hist-entradas');
+      if (!tbody) return;
+      try {
+        const res = await fetch(API_URL + '/entradas');
+        if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Erro ao carregar.</td></tr>'; return; }
+        const lista = await res.json();
+        if (!Array.isArray(lista) || !lista.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhuma entrada registrada.</td></tr>'; return;
+        }
+        tbody.innerHTML = lista.map(function(e, i) {
+          var data = e.data_entrada ? new Date(e.data_entrada).toLocaleDateString('pt-BR') : '-';
+          return '<tr><td>' + (i+1) + '</td><td>' + (e.produto_nome || 'Produto #' + e.id_produto) + '</td><td>' + e.quantidade + '</td><td>R$ ' + parseFloat(e.valor_unitario || 0).toFixed(2) + '</td><td>' + data + '</td><td><button class="btn-add" onclick="editarEntrada(' + e.id_entrada + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="deletarEntrada(' + e.id_entrada + ')">&#128465;</button></td></tr>';
+        }).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Erro de conexao.</td></tr>';
+      }
+    }
+
+    async function deletarEntrada(id) {
+      if (!confirm('Tem certeza que deseja excluir esta entrada?')) return;
+      try {
+        const res = await fetch(API_URL + '/entradas/' + id, { method: 'DELETE' });
+        if (res.ok) { carregarHistoricoEntradas(); carregarProdutos(); }
+        else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
+      } catch(e) { alert('Erro de conexao.'); }
+    }
+
+    function fecharModalEditarEntrada() { document.getElementById('modal-editar-entrada').style.display = 'none'; }
+
+    async function editarEntrada(id) {
+      try {
+        const res = await fetch(API_URL + '/entradas');
+        const lista = await res.json();
+        const e = lista.find(function(x) { return x.id_entrada == id; });
+        if (!e) return;
+        document.getElementById('edit-ent-id').value = e.id_entrada;
+        var sel = document.getElementById('edit-ent-produto');
+        sel.innerHTML = '<option value="">Selecione</option>';
+        produtosCache.forEach(function(p) { sel.innerHTML += '<option value="' + p.id_produto + '" ' + (p.id_produto == e.id_produto ? 'selected' : '') + '>' + p.nome + '</option>'; });
+        document.getElementById('edit-ent-qtd').value = e.quantidade;
+        document.getElementById('edit-ent-valor').value = e.valor_unitario;
+        document.getElementById('edit-ent-data').value = e.data_entrada ? e.data_entrada.substring(0,10) : '';
+        document.getElementById('edit-ent-obs').value = e.observacao || '';
+        document.getElementById('edit-ent-erro').style.display = 'none';
+        document.getElementById('modal-editar-entrada').style.display = 'flex';
+      } catch(e) { alert('Erro ao carregar entrada.'); }
+    }
+
+    async function salvarEditarEntrada(e) {
+      e.preventDefault();
+      var id = document.getElementById('edit-ent-id').value;
+      var body = {
+        id_produto: parseInt(document.getElementById('edit-ent-produto').value),
+        quantidade: parseInt(document.getElementById('edit-ent-qtd').value),
+        valor_unitario: parseFloat(document.getElementById('edit-ent-valor').value),
+        data_entrada: document.getElementById('edit-ent-data').value,
+        observacao: document.getElementById('edit-ent-obs').value
+      };
+      try {
+        const res = await fetch(API_URL + '/entradas/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!res.ok) { var err = await res.json(); document.getElementById('edit-ent-erro').textContent = err.erro || 'Erro'; document.getElementById('edit-ent-erro').style.display = 'block'; return; }
+        fecharModalEditarEntrada(); carregarHistoricoEntradas(); carregarProdutos();
+      } catch(e) { alert('Erro de conexao.'); }
+    }
+
+    /* ===== HISTORICO SAIDAS ===== */
+    async function carregarHistoricoSaidas() {
+      const tbody = document.getElementById('tbody-hist-saidas');
+      if (!tbody) return;
+      try {
+        const res = await fetch(API_URL + '/saidas');
+        if (!res.ok) { tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Erro ao carregar.</td></tr>'; return; }
+        const lista = await res.json();
+        if (!Array.isArray(lista) || !lista.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Nenhuma saida registrada.</td></tr>'; return;
+        }
+        tbody.innerHTML = lista.map(function(s, i) {
+          var data = s.data_saida ? new Date(s.data_saida).toLocaleDateString('pt-BR') : '-';
+          return '<tr><td>' + (i+1) + '</td><td>' + (s.produto_nome || 'Produto #' + s.id_produto) + '</td><td>' + s.quantidade + '</td><td>' + (s.tipo || '-') + '</td><td>' + data + '</td><td><button class="btn-add" onclick="editarSaida(' + s.id_saida + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="deletarSaida(' + s.id_saida + ')">&#128465;</button></td></tr>';
+        }).join('');
+      } catch(e) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-msg">Erro de conexao.</td></tr>';
+      }
+    }
+
+    async function deletarSaida(id) {
+      if (!confirm('Tem certeza que deseja excluir esta saida?')) return;
+      try {
+        const res = await fetch(API_URL + '/saidas/' + id, { method: 'DELETE' });
+        if (res.ok) { carregarHistoricoSaidas(); carregarProdutos(); }
+        else { var err = await res.json(); alert('Erro: ' + (err.erro || 'Falha ao excluir')); }
+      } catch(e) { alert('Erro de conexao.'); }
+    }
+
+    function fecharModalEditarSaida() { document.getElementById('modal-editar-saida').style.display = 'none'; }
+
+    async function editarSaida(id) {
+      try {
+        const res = await fetch(API_URL + '/saidas');
+        const lista = await res.json();
+        const s = lista.find(function(x) { return x.id_saida == id; });
+        if (!s) return;
+        document.getElementById('edit-sai-id').value = s.id_saida;
+        var sel = document.getElementById('edit-sai-produto');
+        sel.innerHTML = '<option value="">Selecione</option>';
+        produtosCache.forEach(function(p) { sel.innerHTML += '<option value="' + p.id_produto + '" ' + (p.id_produto == s.id_produto ? 'selected' : '') + '>' + p.nome + '</option>'; });
+        document.getElementById('edit-sai-qtd').value = s.quantidade;
+        document.getElementById('edit-sai-tipo').value = s.tipo || '';
+        document.getElementById('edit-sai-motivo').value = s.motivo || '';
+        document.getElementById('edit-sai-data').value = s.data_saida ? s.data_saida.substring(0,10) : '';
+        document.getElementById('edit-sai-obs').value = s.observacao || '';
+        document.getElementById('edit-sai-erro').style.display = 'none';
+        document.getElementById('modal-editar-saida').style.display = 'flex';
+      } catch(e) { alert('Erro ao carregar saida.'); }
+    }
+
+    async function salvarEditarSaida(e) {
+      e.preventDefault();
+      var id = document.getElementById('edit-sai-id').value;
+      var body = {
+        id_produto: parseInt(document.getElementById('edit-sai-produto').value),
+        quantidade: parseInt(document.getElementById('edit-sai-qtd').value),
+        tipo: document.getElementById('edit-sai-tipo').value,
+        motivo: document.getElementById('edit-sai-motivo').value,
+        data_saida: document.getElementById('edit-sai-data').value,
+        observacao: document.getElementById('edit-sai-obs').value
+      };
+      try {
+        const res = await fetch(API_URL + '/saidas/' + id, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        if (!res.ok) { var err = await res.json(); document.getElementById('edit-sai-erro').textContent = err.erro || 'Erro'; document.getElementById('edit-sai-erro').style.display = 'block'; return; }
+        fecharModalEditarSaida(); carregarHistoricoSaidas(); carregarProdutos();
+      } catch(e) { alert('Erro de conexao.'); }
     }
 
     window.onload = function() {
