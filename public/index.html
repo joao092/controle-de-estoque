@@ -533,21 +533,6 @@
           </div>
         </div>
 
-        <!-- Categorias -->
-        <div class="config-section" style="margin-top:0.5rem">
-          <div class="config-section-title">Categorias de Produto</div>
-          <div class="tag-list" id="cfg-categorias">
-            <span class="tag">Alimentos <button onclick="removerCategoria(this)">&#215;</button></span>
-            <span class="tag">Bebidas <button onclick="removerCategoria(this)">&#215;</button></span>
-            <span class="tag">Limpeza <button onclick="removerCategoria(this)">&#215;</button></span>
-            <span class="tag">Frios <button onclick="removerCategoria(this)">&#215;</button></span>
-          </div>
-          <div class="tag-input-row">
-            <input type="text" id="cfg-nova-cat" placeholder="Nova categoria...">
-            <button onclick="adicionarCategoria()">+ Adicionar</button>
-          </div>
-        </div>
-
         <!-- Fornecedores -->
         <div class="config-section" style="margin-top:0.5rem">
           <div class="config-section-title">Fornecedores</div>
@@ -696,6 +681,8 @@
     let itensEntrada = [];
     let itensSaida = [];
     let usuarioLogado = null;
+    let configPrefs = {};
+    let autoRefreshInterval = null;
 
     /* ===== LOGIN ===== */
     function atualizarInterfaceUsuario() {
@@ -951,6 +938,16 @@
       let zeros = produtosCache.filter(p => parseInt(p.quantidade) <= 0);
       let ok = produtosCache.filter(p => parseInt(p.quantidade) > parseInt(p.estoque_minimo));
 
+      if (configPrefs.alertasAtivos === false) {
+        badge.textContent = '-';
+        document.getElementById('al-stat-ok').textContent = '-';
+        document.getElementById('al-stat-baixo').textContent = '-';
+        document.getElementById('al-stat-zero').textContent = '-';
+        lista.innerHTML = '<div class="alert-ok-box">&#128100; Alertas de estoque desativados nas configuracoes.</div>';
+        zerados.innerHTML = '';
+        return;
+      }
+
       badge.textContent = baixos.length + zeros.length;
 
       document.getElementById('al-stat-ok').textContent = ok.length;
@@ -981,6 +978,7 @@
         const cfg = await res.json();
         const dados = cfg.dados || {};
         const pref = cfg.preferencias || {};
+        configPrefs = pref;
 
         if (dados.nomeEmpresa) document.getElementById('cfg-nome-empresa').value = dados.nomeEmpresa;
         if (dados.cnpj) document.getElementById('cfg-cnpj').value = dados.cnpj;
@@ -990,16 +988,25 @@
         if (pref.alertasAtivos !== undefined) document.getElementById('cfg-alertas').checked = pref.alertasAtivos;
         if (pref.bloqueio !== undefined) document.getElementById('cfg-bloqueio').checked = pref.bloqueio;
         if (pref.autoRefresh !== undefined) document.getElementById('cfg-auto-refresh').checked = pref.autoRefresh;
-        if (pref.categorias) {
-          const cont = document.getElementById('cfg-categorias');
-          cont.innerHTML = pref.categorias.map(c => '<span class="tag">' + c + ' <button onclick="removerCategoria(this)">&#215;</button></span>').join('');
-        }
         if (pref.fornecedores) {
           const cont = document.getElementById('cfg-fornecedores');
           cont.innerHTML = pref.fornecedores.map(f => '<span class="tag">' + f + ' <button onclick="removerFornecedor(this)">&#215;</button></span>').join('');
         }
+        gerenciarAutoRefresh();
       } catch(e) {
         console.error('Erro ao carregar configuracoes:', e);
+      }
+    }
+
+    function gerenciarAutoRefresh() {
+      if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+        autoRefreshInterval = null;
+      }
+      if (configPrefs.autoRefresh) {
+        autoRefreshInterval = setInterval(function() {
+          carregarProdutos();
+        }, 60000);
       }
     }
 
@@ -1025,13 +1032,11 @@
     }
 
     async function salvarPreferencias() {
-      const cats = Array.from(document.getElementById('cfg-categorias').querySelectorAll('.tag')).map(el => el.textContent.replace('×','').trim());
       const forns = Array.from(document.getElementById('cfg-fornecedores').querySelectorAll('.tag')).map(el => el.textContent.replace('×','').trim());
       const preferencias = {
         alertasAtivos: document.getElementById('cfg-alertas').checked,
         bloqueio: document.getElementById('cfg-bloqueio').checked,
         autoRefresh: document.getElementById('cfg-auto-refresh').checked,
-        categorias: cats,
         fornecedores: forns
       };
       try {
@@ -1042,6 +1047,7 @@
         });
         if (res.ok) {
           alert('Preferencias salvas!');
+          await carregarConfiguracoes();
         } else {
           alert('Erro ao salvar preferencias.');
         }
@@ -1049,19 +1055,6 @@
         alert('Erro ao conectar com o servidor.');
       }
     }
-
-    function adicionarCategoria() {
-      const inp = document.getElementById('cfg-nova-cat');
-      const val = inp.value.trim();
-      if (!val) return;
-      const cont = document.getElementById('cfg-categorias');
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.innerHTML = val + ' <button onclick="removerCategoria(this)">&#215;</button>';
-      cont.appendChild(tag);
-      inp.value = '';
-    }
-    function removerCategoria(btn) { btn.parentElement.remove(); }
 
     function adicionarFornecedor() {
       const inp = document.getElementById('cfg-novo-forn');
@@ -1366,8 +1359,10 @@
       document.getElementById('stat-total').textContent = total;
       document.getElementById('stat-valor').textContent = 'R$ ' + valor.toFixed(2);
       document.getElementById('stat-ativos').textContent = produtosCache.length;
-      document.getElementById('stat-alertas').textContent = alertaCount;
-      document.getElementById('dashboard-alertas').innerHTML = alertasHTML || '<p style="color:var(--text-muted);font-size:13px;">&#10003; Todos os produtos com estoque regular.</p>';
+      document.getElementById('stat-alertas').textContent = configPrefs.alertasAtivos !== false ? alertaCount : '-';
+      document.getElementById('dashboard-alertas').innerHTML = configPrefs.alertasAtivos !== false
+        ? (alertasHTML || '<p style="color:var(--text-muted);font-size:13px;">&#10003; Todos os produtos com estoque regular.</p>')
+        : '<p style="color:var(--text-muted);font-size:13px;">&#128100; Alertas de estoque desativados nas configuracoes.</p>';
     }
 
     async function carregarDashboard() { await carregarProdutos(); }
@@ -1457,6 +1452,15 @@
     async function salvarSaida() {
       if (!itensSaida.length) { alert('Adicione ao menos um item.'); return; }
       if (!usuarioLogado) { alert('Faca login para registrar saida.'); return; }
+      if (configPrefs.bloqueio) {
+        for (var j = 0; j < itensSaida.length; j++) {
+          var prod = produtosCache.find(function(p) { return p.id_produto == itensSaida[j].id; });
+          if (!prod || parseInt(prod.quantidade) < itensSaida[j].qtd) {
+            alert('Estoque insuficiente para "' + itensSaida[j].nome + '". Disponivel: ' + (prod ? prod.quantidade : 0) + ', solicitado: ' + itensSaida[j].qtd + '.');
+            return;
+          }
+        }
+      }
       var dataSaida = document.getElementById('sai-data').value;
       var cliente = document.getElementById('sai-cliente').value;
       var observacao = document.getElementById('sai-obs').value;
@@ -1506,6 +1510,7 @@
       document.getElementById('rel-data-fim').value = hoje;
       verificarSessao();
       carregarProdutos();
+      carregarConfiguracoes();
     };
   </script>
 </body>
