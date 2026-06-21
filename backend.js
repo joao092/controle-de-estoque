@@ -11,6 +11,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+async function resetSequence(tabela, coluna) {
+    const sequencia = `${tabela}_${coluna}_seq`;
+    await pool.query(`SELECT setval('${sequencia}', COALESCE((SELECT MAX(${coluna}) FROM ${tabela}), 0) + 1)`);
+}
+
 /* ==========================================================
    LOCALIZAR INDEX.HTML AUTOMATICAMENTE
 ========================================================== */
@@ -525,6 +530,9 @@ app.delete("/api/produtos/:id", async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ erro: "Produto nao encontrado." });
         }
+        await resetSequence("produtos", "id_produto");
+        await resetSequence("entradas", "id_entrada");
+        await resetSequence("saidas", "id_saida");
         return res.json({ mensagem: "Produto e registros relacionados removidos com sucesso." });
     } catch (err) {
         await client.query("ROLLBACK");
@@ -647,6 +655,7 @@ app.post("/api/fornecedores", async (req, res) => {
 app.delete("/api/fornecedores/:id", async (req, res) => {
     try {
         await pool.query("DELETE FROM fornecedores WHERE id_fornecedor = $1", [req.params.id]);
+        await resetSequence("fornecedores", "id_fornecedor");
         return res.json({ mensagem: "Fornecedor removido" });
     } catch (err) {
         console.error("ERRO DELETE FORNECEDOR:", err.message);
@@ -688,6 +697,7 @@ app.post("/api/clientes", async (req, res) => {
 app.delete("/api/clientes/:id", async (req, res) => {
     try {
         await pool.query("DELETE FROM clientes WHERE id_cliente = $1", [req.params.id]);
+        await resetSequence("clientes", "id_cliente");
         return res.json({ mensagem: "Cliente removido" });
     } catch (err) {
         console.error("ERRO DELETE CLIENTE:", err.message);
@@ -729,6 +739,7 @@ app.post("/api/categorias", async (req, res) => {
 app.delete("/api/categorias/:id", async (req, res) => {
     try {
         await pool.query("DELETE FROM categorias WHERE id_categoria = $1", [req.params.id]);
+        await resetSequence("categorias", "id_categoria");
         return res.json({ mensagem: "Categoria removida" });
     } catch (err) {
         console.error("ERRO DELETE CATEGORIA:", err.message);
