@@ -91,9 +91,7 @@ if (caminhoIndexFinal) {
    POSTGRESQL
 ========================================================== */
 
-const DATABASE_URL =
-    process.env.DATABASE_URL ||
-    "postgresql://teste_w1lm_user:UreyHWpfvEiNyLMxRS01r4VVWIfLHrAX@dpg-d8ljvn57vvec73e6ook0-a.oregon-postgres.render.com/teste_w1lm";
+const DATABASE_URL = process.env.DATABASE_URL;
 
 console.log("DATABASE_URL:", DATABASE_URL ? "CONFIGURADA" : "NÃO CONFIGURADA");
 
