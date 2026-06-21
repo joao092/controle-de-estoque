@@ -533,18 +533,6 @@
           </div>
         </div>
 
-        <!-- Fornecedores -->
-        <div class="config-section" style="margin-top:0.5rem">
-          <div class="config-section-title">Fornecedores</div>
-          <div class="tag-list" id="cfg-fornecedores">
-            <span class="tag">Fornecedor A <button onclick="removerFornecedor(this)">&#215;</button></span>
-            <span class="tag">Fornecedor B <button onclick="removerFornecedor(this)">&#215;</button></span>
-          </div>
-          <div class="tag-input-row">
-            <input type="text" id="cfg-novo-forn" placeholder="Nome do fornecedor...">
-            <button onclick="adicionarFornecedor()">+ Adicionar</button>
-          </div>
-        </div>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="salvarPreferencias()">Salvar Preferencias</button>
         </div>
@@ -993,10 +981,6 @@
         if (pref.alertasAtivos !== undefined) document.getElementById('cfg-alertas').checked = pref.alertasAtivos;
         if (pref.bloqueio !== undefined) document.getElementById('cfg-bloqueio').checked = pref.bloqueio;
         if (pref.autoRefresh !== undefined) document.getElementById('cfg-auto-refresh').checked = pref.autoRefresh;
-        if (pref.fornecedores) {
-          const cont = document.getElementById('cfg-fornecedores');
-          cont.innerHTML = pref.fornecedores.map(f => '<span class="tag">' + f + ' <button onclick="removerFornecedor(this)">&#215;</button></span>').join('');
-        }
         gerenciarAutoRefresh();
       } catch(e) {
         console.error('Erro ao carregar configuracoes:', e);
@@ -1037,12 +1021,10 @@
     }
 
     async function salvarPreferencias() {
-      const forns = Array.from(document.getElementById('cfg-fornecedores').querySelectorAll('.tag')).map(el => el.textContent.replace('×','').trim());
       const preferencias = {
         alertasAtivos: document.getElementById('cfg-alertas').checked,
         bloqueio: document.getElementById('cfg-bloqueio').checked,
-        autoRefresh: document.getElementById('cfg-auto-refresh').checked,
-        fornecedores: forns
+        autoRefresh: document.getElementById('cfg-auto-refresh').checked
       };
       try {
         const res = await fetch(API_URL + '/configuracoes', {
@@ -1060,19 +1042,6 @@
         alert('Erro ao conectar com o servidor.');
       }
     }
-
-    function adicionarFornecedor() {
-      const inp = document.getElementById('cfg-novo-forn');
-      const val = inp.value.trim();
-      if (!val) return;
-      const cont = document.getElementById('cfg-fornecedores');
-      const tag = document.createElement('span');
-      tag.className = 'tag';
-      tag.innerHTML = val + ' <button onclick="removerFornecedor(this)">&#215;</button>';
-      cont.appendChild(tag);
-      inp.value = '';
-    }
-    function removerFornecedor(btn) { btn.parentElement.remove(); }
 
     function atualizarSelectFornecedores(lista) {
       const sel = document.getElementById('ent-fornecedor');
