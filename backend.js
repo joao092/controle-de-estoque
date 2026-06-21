@@ -288,17 +288,9 @@ const pool = new Pool({
         await pool.query(`
             CREATE OR REPLACE FUNCTION fn_atualiza_estoque_saida()
             RETURNS TRIGGER AS $$
-            DECLARE qtd_atual INTEGER;
             BEGIN
-                SELECT quantidade INTO qtd_atual FROM produtos WHERE id_produto = NEW.id_produto;
-
-                IF qtd_atual < NEW.quantidade THEN
-                    RAISE EXCEPTION 'Estoque insuficiente. Disponivel: %, solicitado: %', qtd_atual, NEW.quantidade;
-                END IF;
-
                 UPDATE produtos SET quantidade = quantidade - NEW.quantidade
                 WHERE id_produto = NEW.id_produto;
-
                 RETURN NEW;
             END;
             $$ LANGUAGE plpgsql
@@ -315,7 +307,7 @@ const pool = new Pool({
             EXECUTE FUNCTION fn_atualiza_estoque_saida()
         `);
 
-        console.log("Trigger saida criada");
+        console.log("Trigger saida criada (sem bloqueio)");
     } catch (err) {
         console.error("Erro trigger saida:", err.message);
     }
@@ -593,6 +585,17 @@ app.get("/api/saidas", async (req, res) => {
 app.post("/api/saidas", async (req, res) => {
     try {
         const { id_produto, id_usuario, quantidade, motivo, cliente, data_saida, observacao } = req.body;
+
+        const cfgRes = await pool.query("SELECT preferencias FROM configuracoes WHERE id = 1");
+        const preferencias = (cfgRes.rows[0] && cfgRes.rows[0].preferencias) || {};
+        if (preferencias.bloqueio !== false) {
+            const prodRes = await pool.query("SELECT quantidade FROM produtos WHERE id_produto = $1", [id_produto]);
+            const qtdAtual = prodRes.rows[0] ? parseInt(prodRes.rows[0].quantidade) : 0;
+            if (qtdAtual < quantidade) {
+                return res.status(400).json({ erro: `Estoque insuficiente. Disponivel: ${qtdAtual}, solicitado: ${quantidade}` });
+            }
+        }
+
         const result = await pool.query(
             `INSERT INTO saidas (id_produto, id_usuario, quantidade, motivo, cliente, data_saida, observacao)
              VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
@@ -600,9 +603,6 @@ app.post("/api/saidas", async (req, res) => {
         );
         return res.status(201).json(result.rows[0]);
     } catch (err) {
-        if (err.message && err.message.includes("Estoque insuficiente")) {
-            return res.status(400).json({ erro: err.message });
-        }
         console.error("ERRO INSERT SAIDA:", err.message);
         return res.status(500).json({ erro: err.message });
     }
