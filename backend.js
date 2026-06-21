@@ -17,7 +17,7 @@ async function resetSequence(tabela, coluna) {
 }
 
 /* ==========================================================
-   LOCALIZAR INDEX.HTML
+   LOCALIZAR INDEX.HTML AUTOMATICAMENTE
 ========================================================== */
 
 function buscarArquivoRecursivo(diretorioAlvo, nomeArquivo) {
@@ -665,7 +665,7 @@ app.post("/api/entradas", requerAdmin, async (req, res) => {
         );
         await pool.query(
             `INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao)
-             VALUES ('ENTRADA', $1, $2, $3, $4, $5, $6)`,
+             VALUES ('ENTRADA', $1, $2, $3, $4, COALESCE(NULLIF($5, ''), CURRENT_DATE), $6)`,
             [id_produto, id_usuario, quantidade, valor_unitario||0, data_entrada, observacao||null]
         );
         return res.status(201).json(result.rows[0]);
@@ -742,7 +742,7 @@ app.post("/api/saidas", requerAdmin, async (req, res) => {
         );
         await pool.query(
             `INSERT INTO movimentacoes (tipo, id_produto, id_usuario, quantidade, valor_unitario, data_movimentacao, observacao, motivo, cliente)
-             VALUES ('SAIDA', $1, $2, $3, 0, $4, $5, $6, $7)`,
+             VALUES ('SAIDA', $1, $2, $3, 0, COALESCE(NULLIF($4, ''), CURRENT_DATE), $5, $6, $7)`,
             [id_produto, id_usuario, quantidade, data_saida, observacao||null, motivo||null, cliente||null]
         );
         return res.status(201).json(result.rows[0]);
