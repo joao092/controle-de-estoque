@@ -967,7 +967,9 @@ app.put("/api/configuracoes", requerAdmin, async (req, res) => {
     try {
         const { dados, preferencias } = req.body;
         const result = await pool.query(
-            `UPDATE configuracoes SET dados = COALESCE($1::jsonb, dados), preferencias = COALESCE($2::jsonb, preferencias) WHERE id = 1 RETURNING dados, preferencias`,
+            `INSERT INTO configuracoes (id, dados, preferencias) VALUES (1, COALESCE($1::jsonb, '{}'), COALESCE($2::jsonb, '{}'))
+             ON CONFLICT (id) DO UPDATE SET dados = COALESCE($1::jsonb, configuracoes.dados), preferencias = COALESCE($2::jsonb, configuracoes.preferencias)
+             RETURNING dados, preferencias`,
             [dados ? JSON.stringify(dados) : null, preferencias ? JSON.stringify(preferencias) : null]
         );
         return res.json(result.rows[0]);
