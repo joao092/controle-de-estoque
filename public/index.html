@@ -684,6 +684,11 @@
     let configPrefs = {};
     let autoRefreshInterval = null;
 
+    function getBloqueioAtivo() {
+      const el = document.getElementById('cfg-bloqueio');
+      return el ? el.checked : configPrefs.bloqueio !== false;
+    }
+
     /* ===== LOGIN ===== */
     function atualizarInterfaceUsuario() {
       const nomeEl = document.getElementById('user-name');
@@ -1452,7 +1457,7 @@
     async function salvarSaida() {
       if (!itensSaida.length) { alert('Adicione ao menos um item.'); return; }
       if (!usuarioLogado) { alert('Faca login para registrar saida.'); return; }
-      if (configPrefs.bloqueio) {
+      if (getBloqueioAtivo()) {
         for (var j = 0; j < itensSaida.length; j++) {
           var prod = produtosCache.find(function(p) { return p.id_produto == itensSaida[j].id; });
           if (!prod || parseInt(prod.quantidade) < itensSaida[j].qtd) {
