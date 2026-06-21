@@ -807,13 +807,15 @@
 
       document.querySelectorAll('.tag-input-row').forEach(el => el.style.display = admin ? '' : 'none');
 
-      if (!admin) {
-        document.querySelectorAll('input, select, textarea').forEach(el => {
+      document.querySelectorAll('input, select, textarea').forEach(el => {
+        if (admin) {
+          el.disabled = false;
+        } else {
           if (el.closest('#form-login')) return;
           if (el.closest('.filter-bar')) return;
           el.disabled = true;
-        });
-      }
+        }
+      });
     }
 
     /* ===== LOGIN ===== */
