@@ -808,7 +808,11 @@
       document.querySelectorAll('.tag-input-row').forEach(el => el.style.display = admin ? '' : 'none');
 
       if (!admin) {
-        document.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
+        document.querySelectorAll('input, select, textarea').forEach(el => {
+          if (el.closest('#form-login')) return;
+          if (el.closest('.filter-bar')) return;
+          el.disabled = true;
+        });
       }
     }
 
