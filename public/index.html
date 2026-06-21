@@ -1509,12 +1509,21 @@
       let total = 0;
       tbody.innerHTML = itensEntrada.map(function(item, i) {
         const sub = item.qtd * item.val; total += sub;
-        return '<tr><td>' + item.nome + '</td><td>' + item.qtd + '</td><td>R$ ' + item.val.toFixed(2) + '</td><td>R$ ' + sub.toFixed(2) + '</td><td><button class="btn-delete" onclick="removerItemEntrada(' + i + ')">&#128465;</button></td></tr>';
+        return '<tr><td>' + item.nome + '</td><td>' + item.qtd + '</td><td>R$ ' + item.val.toFixed(2) + '</td><td>R$ ' + sub.toFixed(2) + '</td><td><button class="btn-add" onclick="editarItemEntrada(' + i + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="removerItemEntrada(' + i + ')">&#128465;</button></td></tr>';
       }).join('');
       document.getElementById('total-entrada').textContent = total.toFixed(2);
     }
 
     function removerItemEntrada(i) { itensEntrada.splice(i,1); renderItensEntrada(); }
+
+    function editarItemEntrada(i) {
+      var item = itensEntrada[i];
+      document.getElementById('ent-produto').value = item.id;
+      document.getElementById('ent-qtd').value = item.qtd;
+      document.getElementById('ent-valor').value = item.val;
+      itensEntrada.splice(i,1);
+      renderItensEntrada();
+    }
     function limparEntrada() { itensEntrada = []; renderItensEntrada(); }
 
     async function salvarEntrada() {
@@ -1563,12 +1572,21 @@
       let total = 0;
       tbody.innerHTML = itensSaida.map(function(item, i) {
         const sub = item.qtd * item.val; total += sub;
-        return '<tr><td>' + item.nome + '</td><td>' + item.qtd + '</td><td>' + (item.motivo || '-') + '</td><td>R$ ' + sub.toFixed(2) + '</td><td><button class="btn-delete" onclick="removerItemSaida(' + i + ')">&#128465;</button></td></tr>';
+        return '<tr><td>' + item.nome + '</td><td>' + item.qtd + '</td><td>' + (item.motivo || '-') + '</td><td>R$ ' + sub.toFixed(2) + '</td><td><button class="btn-add" onclick="editarItemSaida(' + i + ')" style="margin-right:4px">&#9998;</button><button class="btn-delete" onclick="removerItemSaida(' + i + ')">&#128465;</button></td></tr>';
       }).join('');
       document.getElementById('total-saida').textContent = total.toFixed(2);
     }
 
     function removerItemSaida(i) { itensSaida.splice(i,1); renderItensSaida(); }
+
+    function editarItemSaida(i) {
+      var item = itensSaida[i];
+      document.getElementById('sai-produto').value = item.id;
+      document.getElementById('sai-qtd').value = item.qtd;
+      document.getElementById('sai-motivo').value = item.motivo || '';
+      itensSaida.splice(i,1);
+      renderItensSaida();
+    }
     function limparSaida() { itensSaida = []; renderItensSaida(); }
 
     async function salvarSaida() {
