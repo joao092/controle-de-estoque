@@ -984,7 +984,7 @@
       if (id === 'dashboard') carregarDashboard();
       if (['entradas','saidas','produtos'].includes(id)) carregarProdutos();
       if (id === 'alertas') carregarAlertas();
-      if (id === 'relatorios') { carregarProdutos(); document.getElementById('rel-data-ini').value = ''; document.getElementById('rel-data-fim').value = ''; gerarRelatorioMovimentacoes(); gerarRelatorioEstoque(); gerarRelatorioMaisVendidos(); }
+      if (id === 'relatorios') { carregarProdutos(); gerarRelatorioMovimentacoes(true); gerarRelatorioEstoque(); gerarRelatorioMaisVendidos(); }
       if (id === 'configuracoes') carregarConfiguracoes();
       setTimeout(aplicarPermissoes, 100);
     }
@@ -998,7 +998,7 @@
     }
 
     /* ===== RELATORIO: MOVIMENTACOES ===== */
-    async function gerarRelatorioMovimentacoes() {
+    async function gerarRelatorioMovimentacoes(semFiltro) {
       const ini = document.getElementById('rel-data-ini').value;
       const fim = document.getElementById('rel-data-fim').value;
       const tipo = document.getElementById('rel-tipo').value;
@@ -1016,8 +1016,8 @@
 
       if (!Array.isArray(movs)) movs = [];
       if (tipo) movs = movs.filter(m => m.tipo === tipo);
-      if (ini) movs = movs.filter(m => m.data_mov && m.data_mov.substring(0,10) >= ini);
-      if (fim) movs = movs.filter(m => m.data_mov && m.data_mov.substring(0,10) <= fim);
+      if (!semFiltro && ini) movs = movs.filter(m => m.data_mov && m.data_mov.substring(0,10) >= ini);
+      if (!semFiltro && fim) movs = movs.filter(m => m.data_mov && m.data_mov.substring(0,10) <= fim);
 
       let totalE = 0, totalS = 0;
       movs.forEach(m => {
