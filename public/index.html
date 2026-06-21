@@ -929,7 +929,7 @@
       if (id === 'dashboard') carregarDashboard();
       if (['entradas','saidas','produtos'].includes(id)) carregarProdutos();
       if (id === 'alertas') carregarAlertas();
-      if (id === 'relatorios') { carregarProdutos(); gerarRelatorioEstoque(); gerarRelatorioMaisVendidos(); }
+      if (id === 'relatorios') { carregarProdutos(); gerarRelatorioMovimentacoes(); gerarRelatorioEstoque(); gerarRelatorioMaisVendidos(); }
       if (id === 'configuracoes') carregarConfiguracoes();
       setTimeout(aplicarPermissoes, 100);
     }
