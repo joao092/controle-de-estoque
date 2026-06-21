@@ -763,10 +763,53 @@
     let usuarioLogado = null;
     let configPrefs = {};
     let autoRefreshInterval = null;
+    let intentSection = null;
 
     function getBloqueioAtivo() {
       const el = document.getElementById('cfg-bloqueio');
       return el ? el.checked : configPrefs.bloqueio !== false;
+    }
+
+    function isAdmin() {
+      return usuarioLogado && usuarioLogado.nivel_acesso === 'Administrador';
+    }
+
+    function aplicarPermissoes() {
+      const admin = isAdmin();
+
+      document.querySelectorAll('.btn-delete').forEach(el => el.style.display = admin ? '' : 'none');
+
+      document.querySelectorAll('.btn-add').forEach(el => el.style.display = admin ? '' : 'none');
+
+      document.querySelectorAll('#configuracoes .btn-primary').forEach(el => el.style.display = admin ? '' : 'none');
+
+      document.querySelectorAll('.card').forEach(card => {
+        const title = card.querySelector('.card-title');
+        if (!title) return;
+        const t = title.textContent;
+        if (
+          t.includes('Cadastrar Novo') ||
+          t.includes('Gerenciar Fornecedores') ||
+          t.includes('Gerenciar Clientes') ||
+          t.includes('Gerenciar Categorias') ||
+          t.includes('Dados da Entrada') ||
+          t.includes('Itens da Entrada') ||
+          t.includes('Dados da Saida') ||
+          t.includes('Itens da Saida')
+        ) {
+          card.style.display = admin ? '' : 'none';
+        }
+      });
+
+      document.querySelectorAll('#entradas .btn-row, #saidas .btn-row').forEach(el => el.style.display = admin ? '' : 'none');
+
+      document.querySelectorAll('.form-group button.btn-add').forEach(el => el.style.display = admin ? '' : 'none');
+
+      document.querySelectorAll('.tag-input-row').forEach(el => el.style.display = admin ? '' : 'none');
+
+      if (!admin) {
+        document.querySelectorAll('input, select, textarea').forEach(el => el.disabled = true);
+      }
     }
 
     /* ===== LOGIN ===== */
@@ -786,8 +829,8 @@
     function abrirModalLogin() {
       if (usuarioLogado) {
         document.getElementById('modal-user-nome').textContent = usuarioLogado.nome;
-        document.getElementById('modal-user-email').textContent = usuarioLogado.email;
-        document.getElementById('modal-user-funcao').textContent = usuarioLogado.funcao;
+        document.getElementById('modal-user-email').textContent = usuarioLogado.email || '';
+        document.getElementById('modal-user-funcao').textContent = usuarioLogado.nivel_acesso || 'Usuario';
         document.getElementById('modal-user-avatar').textContent = usuarioLogado.nome.charAt(0).toUpperCase();
         document.getElementById('modal-usuario').style.display = 'flex';
         return;
@@ -795,7 +838,7 @@
       document.getElementById('login-erro').style.display = 'none';
       document.getElementById('form-login').reset();
       document.getElementById('modal-login').style.display = 'flex';
-      setTimeout(function() { document.getElementById('login-email').focus(); }, 100);
+      setTimeout(function() { document.getElementById('login-nome').focus(); }, 100);
     }
 
     function fecharModalLogin() { document.getElementById('modal-login').style.display = 'none'; }
@@ -826,7 +869,13 @@
         localStorage.setItem('token', data.token);
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         atualizarInterfaceUsuario();
+        aplicarPermissoes();
         fecharModalLogin();
+        if (isAdmin() && intentSection) {
+          var navMap = { 'configuracoes': document.querySelectorAll('.nav-item')[6] };
+          switchSection(intentSection, navMap[intentSection] || null);
+          intentSection = null;
+        }
       } catch(e) {
         erroEl.textContent = 'Erro de conexao com o servidor';
         erroEl.style.display = 'block';
@@ -847,9 +896,11 @@
           usuarioLogado = data.usuario;
           localStorage.setItem('usuario', JSON.stringify(data.usuario));
           atualizarInterfaceUsuario();
+          aplicarPermissoes();
         } else {
           localStorage.removeItem('token');
           localStorage.removeItem('usuario');
+          aplicarPermissoes();
         }
       } catch(e) {
         console.error('Erro ao verificar sessao:', e);
@@ -871,9 +922,18 @@
       localStorage.removeItem('usuario');
       atualizarInterfaceUsuario();
       fecharModalUsuario();
+      aplicarPermissoes();
+      var navItems = document.querySelectorAll('.nav-item');
+      switchSection('dashboard', navItems[0]);
     }
 
     function switchSection(id, el) {
+      if (id === 'configuracoes' && !isAdmin()) {
+        intentSection = id;
+        abrirModalLogin();
+        return;
+      }
+      intentSection = null;
       document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
       document.querySelectorAll('.nav-item').forEach(l => l.classList.remove('active'));
       document.getElementById(id).classList.add('active');
@@ -883,6 +943,7 @@
       if (id === 'alertas') carregarAlertas();
       if (id === 'relatorios') { carregarProdutos(); gerarRelatorioEstoque(); gerarRelatorioMaisVendidos(); }
       if (id === 'configuracoes') carregarConfiguracoes();
+      setTimeout(aplicarPermissoes, 100);
     }
 
     /* ===== ABAS DOS RELATORIOS ===== */
@@ -971,6 +1032,7 @@
         return '<tr><td>' + p.id_produto + '</td><td>' + p.nome + '</td><td style="' + cor + '">' + qtd + '</td><td>' + min + '</td><td>R$ ' + valEstoque.toFixed(2) + '</td><td>' + badge + '</td><td><button class="btn-delete" onclick="deletarProduto(' + p.id_produto + ')">&#128465;</button></td></tr>';
       }).join('');
       document.getElementById('rel-valor-total').textContent = 'R$ ' + valorTotal.toFixed(2);
+      aplicarPermissoes();
     }
 
     function exportarEstoqueCSV() {
@@ -1054,6 +1116,7 @@
           return '<div class="alert-full-item"><div class="al-icon">&#128683;</div><div class="al-body"><div class="al-title">' + p.nome + '</div><div class="al-desc">Produto sem unidades em estoque. Venda bloqueada ate reposicao.</div></div><div class="al-badge"><span class="badge badge-critico">Zerado</span></div></div>';
         }).join('');
       }
+      aplicarPermissoes();
     }
 
     /* ===== CONFIGURACOES ===== */
@@ -1250,6 +1313,7 @@
       carregarCategoriasCard();
       carregarHistoricoEntradas();
       carregarHistoricoSaidas();
+      aplicarPermissoes();
     }
 
     /* ===== CATEGORIA MODAL ===== */
@@ -1816,6 +1880,7 @@
       verificarSessao();
       carregarProdutos();
       carregarConfiguracoes();
+      setTimeout(aplicarPermissoes, 500);
     };
   </script>
 </body>
