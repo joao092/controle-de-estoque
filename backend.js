@@ -484,6 +484,31 @@ app.post("/api/logout", async (req, res) => {
 });
 
 /* ==========================================================
+   MIDDLEWARE DE AUTENTICACAO ADMIN
+========================================================== */
+
+async function requerAdmin(req, res, next) {
+    try {
+        const token = req.headers.authorization;
+        if (!token) {
+            return res.status(401).json({ erro: "Token de autenticacao nao fornecido." });
+        }
+        const result = await pool.query(
+            "SELECT nivel_acesso FROM usuarios WHERE token = $1", [token]
+        );
+        if (result.rows.length === 0) {
+            return res.status(401).json({ erro: "Token invalido ou sessao expirada." });
+        }
+        if (result.rows[0].nivel_acesso !== 'Administrador') {
+            return res.status(403).json({ erro: "Acesso negado. Apenas administradores podem realizar esta acao." });
+        }
+        next();
+    } catch (err) {
+        return res.status(500).json({ erro: err.message });
+    }
+}
+
+/* ==========================================================
    PRODUTOS
 ========================================================== */
 
@@ -502,7 +527,7 @@ app.get("/api/produtos", async (req, res) => {
     }
 });
 
-app.post("/api/produtos", async (req, res) => {
+app.post("/api/produtos", requerAdmin, async (req, res) => {
     try {
         const { nome, categoria, preco_custo, preco_venda, quantidade, estoque_minimo, id_fornecedor } = req.body;
         const result = await pool.query(
@@ -517,7 +542,7 @@ app.post("/api/produtos", async (req, res) => {
     }
 });
 
-app.put("/api/produtos/:id", async (req, res) => {
+app.put("/api/produtos/:id", requerAdmin, async (req, res) => {
     try {
         const { id } = req.params;
         const { nome, categoria, preco_custo, preco_venda, quantidade, estoque_minimo, id_fornecedor } = req.body;
@@ -533,7 +558,7 @@ app.put("/api/produtos/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/produtos/:id", async (req, res) => {
+app.delete("/api/produtos/:id", requerAdmin, async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;
@@ -579,7 +604,7 @@ app.get("/api/entradas", async (req, res) => {
     }
 });
 
-app.post("/api/entradas", async (req, res) => {
+app.post("/api/entradas", requerAdmin, async (req, res) => {
     try {
         const { id_produto, id_fornecedor, id_usuario, quantidade, valor_unitario, data_entrada, observacao } = req.body;
         const result = await pool.query(
@@ -594,7 +619,7 @@ app.post("/api/entradas", async (req, res) => {
     }
 });
 
-app.put("/api/entradas/:id", async (req, res) => {
+app.put("/api/entradas/:id", requerAdmin, async (req, res) => {
     try {
         const { id_produto, id_fornecedor, quantidade, valor_unitario, data_entrada, observacao } = req.body;
         const result = await pool.query(
@@ -609,7 +634,7 @@ app.put("/api/entradas/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/entradas/:id", async (req, res) => {
+app.delete("/api/entradas/:id", requerAdmin, async (req, res) => {
     try {
         await pool.query("DELETE FROM entradas WHERE id_entrada = $1", [req.params.id]);
         await resetSequence("entradas", "id_entrada");
@@ -640,7 +665,7 @@ app.get("/api/saidas", async (req, res) => {
     }
 });
 
-app.post("/api/saidas", async (req, res) => {
+app.post("/api/saidas", requerAdmin, async (req, res) => {
     try {
         const { id_produto, id_usuario, quantidade, tipo, motivo, cliente, data_saida, observacao } = req.body;
 
@@ -666,7 +691,7 @@ app.post("/api/saidas", async (req, res) => {
     }
 });
 
-app.put("/api/saidas/:id", async (req, res) => {
+app.put("/api/saidas/:id", requerAdmin, async (req, res) => {
     try {
         const { id_produto, quantidade, tipo, motivo, cliente, data_saida, observacao } = req.body;
         const result = await pool.query(
@@ -681,7 +706,7 @@ app.put("/api/saidas/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/saidas/:id", async (req, res) => {
+app.delete("/api/saidas/:id", requerAdmin, async (req, res) => {
     try {
         await pool.query("DELETE FROM saidas WHERE id_saida = $1", [req.params.id]);
         await resetSequence("saidas", "id_saida");
@@ -706,7 +731,7 @@ app.get("/api/fornecedores", async (req, res) => {
     }
 });
 
-app.post("/api/fornecedores", async (req, res) => {
+app.post("/api/fornecedores", requerAdmin, async (req, res) => {
     try {
         const { nome, contato } = req.body;
         const result = await pool.query(
@@ -720,7 +745,7 @@ app.post("/api/fornecedores", async (req, res) => {
     }
 });
 
-app.put("/api/fornecedores/:id", async (req, res) => {
+app.put("/api/fornecedores/:id", requerAdmin, async (req, res) => {
     try {
         const { nome, contato } = req.body;
         const result = await pool.query("UPDATE fornecedores SET nome=$1, contato=$2 WHERE id_fornecedor=$3 RETURNING *", [nome, contato||'', req.params.id]);
@@ -732,7 +757,7 @@ app.put("/api/fornecedores/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/fornecedores/:id", async (req, res) => {
+app.delete("/api/fornecedores/:id", requerAdmin, async (req, res) => {
     try {
         await pool.query("DELETE FROM fornecedores WHERE id_fornecedor = $1", [req.params.id]);
         await resetSequence("fornecedores", "id_fornecedor");
@@ -760,7 +785,7 @@ app.get("/api/clientes", async (req, res) => {
     }
 });
 
-app.post("/api/clientes", async (req, res) => {
+app.post("/api/clientes", requerAdmin, async (req, res) => {
     try {
         const { nome, contato } = req.body;
         const result = await pool.query(
@@ -774,7 +799,7 @@ app.post("/api/clientes", async (req, res) => {
     }
 });
 
-app.put("/api/clientes/:id", async (req, res) => {
+app.put("/api/clientes/:id", requerAdmin, async (req, res) => {
     try {
         const { nome, contato } = req.body;
         const result = await pool.query("UPDATE clientes SET nome=$1, contato=$2 WHERE id_cliente=$3 RETURNING *", [nome, contato||'', req.params.id]);
@@ -786,7 +811,7 @@ app.put("/api/clientes/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/clientes/:id", async (req, res) => {
+app.delete("/api/clientes/:id", requerAdmin, async (req, res) => {
     try {
         await pool.query("DELETE FROM clientes WHERE id_cliente = $1", [req.params.id]);
         await resetSequence("clientes", "id_cliente");
@@ -811,7 +836,7 @@ app.get("/api/categorias", async (req, res) => {
     }
 });
 
-app.post("/api/categorias", async (req, res) => {
+app.post("/api/categorias", requerAdmin, async (req, res) => {
     try {
         const { nome } = req.body;
         const result = await pool.query(
@@ -828,7 +853,7 @@ app.post("/api/categorias", async (req, res) => {
     }
 });
 
-app.put("/api/categorias/:id", async (req, res) => {
+app.put("/api/categorias/:id", requerAdmin, async (req, res) => {
     try {
         const { nome } = req.body;
         if (!nome) return res.status(400).json({ erro: "Nome da categoria é obrigatorio." });
@@ -841,7 +866,7 @@ app.put("/api/categorias/:id", async (req, res) => {
     }
 });
 
-app.delete("/api/categorias/:id", async (req, res) => {
+app.delete("/api/categorias/:id", requerAdmin, async (req, res) => {
     try {
         await pool.query("DELETE FROM categorias WHERE id_categoria = $1", [req.params.id]);
         await resetSequence("categorias", "id_categoria");
@@ -936,7 +961,7 @@ app.get("/api/configuracoes", async (req, res) => {
     }
 });
 
-app.put("/api/configuracoes", async (req, res) => {
+app.put("/api/configuracoes", requerAdmin, async (req, res) => {
     try {
         const { dados, preferencias } = req.body;
         const result = await pool.query(
